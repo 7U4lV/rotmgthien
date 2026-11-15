@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thiền Viện Tối Giản Online</title>
+    <!-- Thư viện PeerJS chính hãng -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+        /* Màn hình tạo Avatar */
+        #login-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 20, 15, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 15px;
+        }
+        #login-box {
+            background: #232722;
+            border: 3px solid #5c6b54;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 460px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        h2 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #f4d03f;
+            letter-spacing: 1px;
+        }
+        .creator-layout {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .preview-box {
+            width: 120px;
+            height: 140px;
+            background: #3a4f2c;
+            border: 2px solid #6e8263;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .controls-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 13px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .opt-btn {
+            background: #333a30;
+            border: 1px solid #5c6b54;
+            color: #ddd;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        .opt-btn.active {
+            background: #d4af37;
+            color: #111;
+            font-weight: bold;
+            border-color: #fff;
+        }
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid #444;
+            cursor: pointer;
+        }
+        .color-swatch.active {
+            border-color: #fff;
+            transform: scale(1.15);
+        }
+        input[type="text"] {
+            width: 100%;
+            background: #181b17;
+            border: 1px solid #5c6b54;
+            color: #fff;
+            padding: 9px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: #f4d03f; }
+        .start-btn {
+            width: 100%;
+            background: #4a7c36;
+            border: 2px solid #7ab85c;
+            color: #fff;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            margin-top: 10px;
+        }
+        .start-btn:hover { background: #5a9442; }
+
+        /* UI trong game */
+        #hud-top {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.65);
+            border: 1px solid #444;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            pointer-events: none;
+        }
+        #ui-bottom {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 8px;
+            background: rgba(15, 18, 15, 0.85);
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 10px;
+            width: 92%;
+            max-width: 500px;
+        }
+        #chat-input { flex: 1; }
+        .action-btn {
+            background: #8c6d1f;
+            border: 1px solid #f4d03f;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .action-btn.meditating {
+            background: #2e7d32;
+            border-color: #81c784;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Màn hình tạo Avatar -->
+    <div id="login-screen">
+        <div id="login-box">
+            <h2>THIỀN VIỆN TỐI GIẢN</h2>
+            <div class="creator-layout">
+                <div class="preview-box">
+                    <canvas id="previewCanvas" width="100" height="110"></canvas>
+                    <span style="font-size: 11px; color: #aaa; margin-top: 4px;">Xem trước</span>
+                </div>
+                <div class="controls-box">
+                    <div class="control-row">
+                        <span>Giới tính:</span>
+                        <div class="btn-group" id="gender-group">
+                            <button class="opt-btn active" onclick="setGender('male', this)">Nam</button>
+                            <button class="opt-btn" onclick="setGender('female', this)">Nữ</button>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <span>Màu da:</span>
+                        <div class="btn-group" id="skin-group"></div>
+                    </div>
+                    <div class="control-row">
+                        <span>Kiểu tóc:</span>
+                        <div class="btn-group" id="hair-group"></div>
+                    </div>
+                    <div class="control-row">
+                        <span>Trang phục:</span>
+                        <div class="btn-group" id="outfit-group"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-row">
+                <span>Pháp danh / Tên hiển thị:</span>
+                <input type="text" id="username-input" placeholder="Nhập tên của bạn..." maxlength="16" value="Hành Giả">
+            </div>
+            <button class="start-btn" onclick="joinGame()">BƯỚC VÀO THIỀN VIỆN</button>
+        </div>
+    </div>
+
+    <!-- Hướng dẫn góc trái -->
+    <div id="hud-top">
+        <div><b>[W, A, S, D]</b> hoặc <b>[Mũi tên]</b>: Đi dạo</div>
+        <div><b>[SPACE]</b>: Ngồi thiền kiết già / Đứng dậy</div>
+        <div><b>[ENTER]</b>: Gõ chat trò chuyện</div>
+        <div id="online-count" style="color: #81c784; margin-top: 4px;">● Đang kết nối phòng chung...</div>
+    </div>
+
+    <!-- Thanh chat & nút ngồi thiền -->
+    <div id="ui-bottom">
+        <input type="text" id="chat-input" placeholder="Nhập lời nhắn (Enter để gửi)..." maxlength="60" onkeydown="handleChatKey(event)">
+        <button id="meditate-btn" class="action-btn" onclick="toggleMeditate()">🧘 Ngồi Thiền</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+// Cấu hình Avatar
+const SKIN_COLORS = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'];
+const HAIR_STYLES = {
+    male: [{ id: 0, name: 'Đầu trọc' }, { id: 1, name: 'Tóc ngắn' }, { id: 2, name: 'Búi đỉnh' }],
+    female: [{ id: 0, name: 'Búi củ tỏi' }, { id: 1, name: 'Tóc dài' }, { id: 2, name: 'Búi 2 bên' }]
+};
+const OUTFITS = {
+    male: [
+        { id: 0, name: 'Áo Lam', main: '#5c6bc0', trim: '#3949ab' },
+        { id: 1, name: 'Áo Nâu', main: '#795548', trim: '#4e342e' },
+        { id: 2, name: 'Cà Sa Vàng', main: '#e67e22', trim: '#d35400' },
+        { id: 3, name: 'Áo Xám', main: '#78909c', trim: '#455a64' }
+    ],
+    female: [
+        { id: 0, name: 'Áo Lam Nhạt', main: '#7986cb', trim: '#c5cae9' },
+        { id: 1, name: 'Áo Tràng Nâu', main: '#8d6e63', trim: '#d7ccc8' },
+        { id: 2, name: 'Áo Sen Hồng', main: '#d87093', trim: '#f8bbd0' },
+        { id: 3, name: 'Áo Trắng Tinh', main: '#eceff1', trim: '#b0bec5' }
+    ]
+};
+
+let avatarConfig = { gender: 'male', skin: SKIN_COLORS[0], hairStyle: 1, hairColor: '#222222', outfitId: 0 };
+
+function initCreatorUI() {
+    const skinGroup = document.getElementById('skin-group');
+    SKIN_COLORS.forEach((color, idx) => {
+        const div = document.createElement('div');
+        div.className = 'color-swatch' + (idx === 0 ? ' active' : '');
+        div.style.background = color;
+        div.onclick = () => {
+            avatarConfig.skin = color;
+            document.querySelectorAll('#skin-group .color-swatch').forEach(el => el.classList.remove('active'));
+            div.classList.add('active');
+            renderPreview();
+        };
+        skinGroup.appendChild(div);
+    });
+    updateGenderOptions();
+}
+
+function setGender(gender, btn) {
+    avatarConfig.gender = gender;
+    avatarConfig.hairStyle = 0;
+    avatarConfig.outfitId = 0;
+    document.querySelectorAll('#gender-group .opt-btn').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    updateGenderOptions();
+}
+
+function updateGenderOptions() {
+    const hairGroup = document.getElementById('hair-group');
+    hairGroup.innerHTML = '';
+    HAIR_STYLES[avatarConfig.gender].forEach((h, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'opt-btn' + (idx === avatarConfig.hairStyle ? ' active' : '');
+        btn.innerText = h.name;
+        btn.onclick = () => {
+            avatarConfig.hairStyle = h.id;
+            document.querySelectorAll('#hair-group .opt-btn').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            renderPreview();
+        };
+        hairGroup.appendChild(btn);
+    });
+
+    const outfitGroup = document.getElementById('outfit-group');
+    outfitGroup.innerHTML = '';
+    OUTFITS[avatarConfig.gender].forEach((o, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'opt-btn' + (idx === avatarConfig.outfitId ? ' active' : '');
+        btn.innerText = o.name;
+        btn.onclick = () => {
+            avatarConfig.outfitId = o.id;
+            document.querySelectorAll('#outfit-group .opt-btn').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            renderPreview();
+        };
+        outfitGroup.appendChild(btn);
+    });
+    renderPreview();
+}
+
+function renderPreview() {
+    const pCanvas = document.getElementById('previewCanvas');
+    const pCtx = pCanvas.getContext('2d');
+    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+    drawChibiCharacter(pCtx, 50, 82, '', avatarConfig, false, 0, '', 0, 1.4);
+}
+
+// Bản đồ phong cách RotMG
+const MAP_WIDTH = 1600;
+const MAP_HEIGHT = 1200;
+const TEMPLE = { x: 550, y: 120, w: 500, h: 320 };
+const RIVER_Y = 740;
+const RIVER_H = 110;
+const BRIDGE = { x: 740, y: 730, w: 120, h: 130 };
+const POND = { x: 1220, y: 460, r: 130 };
+
+const TREES = [
+    {x: 180, y: 200}, {x: 340, y: 160}, {x: 150, y: 450}, {x: 380, y: 520},
+    {x: 1200, y: 180}, {x: 1420, y: 240}, {x: 1450, y: 620},
+    {x: 220, y: 960}, {x: 480, y: 1040}, {x: 1120, y: 980}, {x: 1380, y: 1020}
+];
+
+const LOTUSES = [
+    {x: 1180, y: 430}, {x: 1250, y: 410}, {x: 1270, y: 490},
+    {x: 1170, y: 500}, {x: 1220, y: 460}
+];
+
+function drawMap(ctx, time) {
+    const tileSize = 40;
+    for (let y = 0; y < MAP_HEIGHT; y += tileSize) {
+        for (let x = 0; x < MAP_WIDTH; x += tileSize) {
+            const isAlt = ((x / tileSize) + (y / tileSize)) % 2 === 0;
+            ctx.fillStyle = isAlt ? '#4e6b38' : '#476332';
+            ctx.fillRect(x, y, tileSize, tileSize);
+            if ((x * 7 + y * 13) % 5 === 0) {
+                ctx.fillStyle = '#3a5227';
+                ctx.fillRect(x + 12, y + 14, 4, 4);
+            }
+        }
+    }
+
+    // Đường đá
+    ctx.fillStyle = '#8c7b65';
+    ctx.fillRect(755, 440, 90, 680);
+
+    // Sông
+    ctx.fillStyle = '#2b7a9e';
+    ctx.fillRect(0, RIVER_Y, MAP_WIDTH, RIVER_H);
+    ctx.fillStyle = '#5bb5db';
+    const waveOffset = Math.sin(time * 0.003) * 15;
+    for (let wx = 40; wx < MAP_WIDTH; wx += 140) {
+        ctx.fillRect(wx + waveOffset, RIVER_Y + 30, 35, 4);
+    }
+
+    // Cầu
+    ctx.fillStyle = '#6d4c33';
+    ctx.fillRect(BRIDGE.x, BRIDGE.y, BRIDGE.w, BRIDGE.h);
+
+    // Hồ sen
+    ctx.fillStyle = '#256d8c';
+    ctx.beginPath();
+    ctx.arc(POND.x, POND.y, POND.r, 0, Math.PI * 2);
+    ctx.fill();
+    LOTUSES.forEach(l => {
+        ctx.fillStyle = '#388e3c';
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f48fb1';
+        ctx.beginPath();
+        ctx.arc(l.x + 2, l.y - 2, 6, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Chánh điện
+    ctx.fillStyle = '#a86b3e';
+    ctx.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
+    ctx.strokeStyle = '#5c3419';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
+    ctx.fillStyle = '#4a2511';
+    ctx.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, 20);
+    ctx.fillRect(TEMPLE.x, TEMPLE.y, 20, TEMPLE.h);
+    ctx.fillRect(TEMPLE.x + TEMPLE.w - 20, TEMPLE.y, 20, TEMPLE.h);
+
+    // Tượng Phật
+    ctx.fillStyle = '#731d1d';
+    ctx.fillRect(TEMPLE.x + 190, TEMPLE.y + 30, 120, 45);
+    const glow = 28 + Math.sin(time * 0.004) * 3;
+    ctx.fillStyle = 'rgba(255, 223, 79, 0.35)';
+    ctx.beginPath();
+    ctx.arc(TEMPLE.x + 250, TEMPLE.y + 42, glow, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffd54f';
+    ctx.beginPath();
+    ctx.arc(TEMPLE.x + 250, TEMPLE.y + 34, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bồ đoàn
+    ctx.fillStyle = '#6d4c41';
+    for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 5; col++) {
+            const bx = TEMPLE.x + 90 + col * 80;
+            const by = TEMPLE.y + 150 + row * 80;
+            ctx.beginPath();
+            ctx.ellipse(bx, by, 18, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Cây
+    TREES.forEach(t => {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(t.x, t.y + 18, 22, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#5d4037';
+        ctx.fillRect(t.x - 6, t.y - 5, 12, 24);
+        ctx.fillStyle = '#2e5a27';
+        ctx.fillRect(t.x - 24, t.y - 36, 48, 32);
+    });
+
+    ctx.strokeStyle = '#1b2613';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+}
+
+// Vẽ nhân vật
+function drawChibiCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, time, scale = 1) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const outfitList = OUTFITS[cfg.gender] || OUTFITS.male;
+    const outfit = outfitList[cfg.outfitId] || outfitList[0];
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 14, meditating ? 16 : 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (meditating) {
+        const pulse = 0.55 + Math.sin(time * 0.005) * 0.25;
+        const radius = 28 + Math.sin(time * 0.004) * 4;
+        const grad = ctx.createRadialGradient(0, -4, 4, 0, -4, radius);
+        grad.addColorStop(0, `rgba(255, 245, 157, ${pulse})`);
+        grad.addColorStop(0.6, `rgba(174, 234, 0, ${pulse * 0.45})`);
+        grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, -4, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = outfit.trim;
+        ctx.beginPath();
+        ctx.ellipse(0, 10, 15, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = outfit.main;
+        ctx.fillRect(-9, -6, 18, 15);
+        ctx.strokeStyle = '#111';
+        ctx.strokeRect(-9, -6, 18, 15);
+
+        drawChibiHead(ctx, 0, -18, cfg, true);
+    } else {
+        const bobY = Math.abs(Math.sin(walkPhase)) * -2.5;
+        const leftLegY = Math.sin(walkPhase) * 4;
+        const rightLegY = -Math.sin(walkPhase) * 4;
+
+        ctx.fillStyle = '#222';
+        ctx.fillRect(-7, 6 + leftLegY, 5, 8);
+        ctx.fillRect(2, 6 + rightLegY, 5, 8);
+
+        ctx.fillStyle = outfit.main;
+        ctx.fillRect(-9, -8 + bobY, 18, 16);
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-9, -8 + bobY, 18, 16);
+
+        drawChibiHead(ctx, 0, -21 + bobY, cfg, false);
+    }
+
+    if (name) {
+        const nameY = meditating ? -36 : -41;
+        ctx.font = 'bold 12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(name, 0, nameY);
+        ctx.fillStyle = '#ffeb3b';
+        ctx.fillText(name, 0, nameY);
+
+        if (chat) {
+            ctx.font = '12px "Courier New", monospace';
+            const textWidth = ctx.measureText(chat).width;
+            const boxW = Math.max(textWidth + 16, 40);
+            const boxH = 22;
+            const boxY = nameY - 34;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(-boxW / 2, boxY, boxW, boxH, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#111';
+            ctx.fillText(chat, 0, boxY + 15);
+        }
+    }
+
+    ctx.restore();
+}
+
+function drawChibiHead(ctx, hx, hy, cfg, eyesClosed) {
+    ctx.save();
+    ctx.translate(hx, hy);
+    ctx.fillStyle = cfg.skin;
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(-12, -11, 24, 22, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = cfg.hairColor;
+    if (cfg.gender === 'male' && cfg.hairStyle === 1) {
+        ctx.fillRect(-12, -12, 24, 7);
+    } else if (cfg.gender === 'female' && cfg.hairStyle === 0) {
+        ctx.beginPath();
+        ctx.arc(0, -15, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(-12, -11, 24, 6);
+    }
+
+    if (eyesClosed) {
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-7, 0); ctx.lineTo(-3, 0);
+        ctx.moveTo(3, 0); ctx.lineTo(7, 0);
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-7, -2, 4, 5);
+        ctx.fillRect(3, -2, 4, 5);
+    }
+
+    ctx.strokeStyle = '#5d4037';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 4, 2.5, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+}
+
+// Logic Game & Mạng P2P
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+let myName = 'Hành Giả';
+let myX = 800;
+let myY = 660;
+let isMeditating = false;
+let walkPhase = 0;
+let chatMessage = '';
+let chatTimer = 0;
+
+let keys = {};
+let peer = null;
+let connections = {};
+let remotePlayers = {};
+// ID phòng cố định duy nhất để tất cả mọi người dùng 1 link share vào chung phòng
+const GLOBAL_ROOM_ID = 'thien_vien_online_room_v2026';
+
+window.addEventListener('keydown', e => {
+    if (document.activeElement.tagName === 'INPUT') return;
+    keys[e.key.toLowerCase()] = true;
+    if (e.code === 'Space') {
+        e.preventDefault();
+        toggleMeditate();
+    } else if (e.key === 'Enter') {
+        document.getElementById('chat-input').focus();
+    }
+});
+window.addEventListener('keyup', e => {
+    keys[e.key.toLowerCase()] = false;
+});
+
+function joinGame() {
+    const val = document.getElementById('username-input').value.trim();
+    if (val) myName = val;
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('ui-bottom').style.display = 'flex';
+    initMultiplayer();
+}
+
+function initMultiplayer() {
+    // Thử tạo peer giữ ID phòng chung
+    peer = new Peer(GLOBAL_ROOM_ID);
+
+    peer.on('open', id => {
+        updateOnlineUI();
+        startSyncLoop();
+    });
+
+    peer.on('error', err => {
+        // Nếu phòng đã có người làm trạm trưởng (Host), kết nối ngẫu nhiên vào hệ thống
+        if (err.type === 'unavailable-id') {
+            peer = new Peer();
+            peer.on('open', myId => {
+                connectToPeer(GLOBAL_ROOM_ID);
+                startSyncLoop();
+            });
+            peer.on('connection', handleIncomingConnection);
+        } else {
+            // Trường hợp lỗi mạng offline, tự động chạy độc lập không sập game
+            updateOnlineUI();
+            startSyncLoop();
+        }
+    });
+
+    peer.on('connection', handleIncomingConnection);
+}
+
+function connectToPeer(targetId) {
+    if (connections[targetId] || targetId === peer.id) return;
+    try {
+        const conn = peer.connect(targetId, { reliable: false });
+        setupConnEvents(conn);
+    } catch(e) {}
+}
+
+function handleIncomingConnection(conn) {
+    setupConnEvents(conn);
+}
+
+function setupConnEvents(conn) {
+    connections[conn.peer] = conn;
+
+    conn.on('open', () => {
+        updateOnlineUI();
+        if (peer.id === GLOBAL_ROOM_ID) {
+            const peerList = Object.keys(connections);
+            conn.send({ type: 'PEER_LIST', list: peerList });
+        }
+    });
+
+    conn.on('data', data => {
+        if (data.type === 'PEER_LIST') {
+            data.list.forEach(pId => connectToPeer(pId));
+        } else if (data.type === 'STATE') {
+            remotePlayers[data.id] = { ...data, lastSeen: Date.now() };
+            if (peer.id === GLOBAL_ROOM_ID) {
+                for (let id in connections) {
+                    if (id !== data.id && connections[id].open) {
+                        connections[id].send(data);
+                    }
+                }
+            }
+            updateOnlineUI();
+        }
+    });
+
+    conn.on('close', () => {
+        delete connections[conn.peer];
+        delete remotePlayers[conn.peer];
+        updateOnlineUI();
+    });
+}
+
+function startSyncLoop() {
+    setInterval(() => {
+        if (!peer || !peer.id) return;
+        const payload = {
+            type: 'STATE',
+            id: peer.id,
+            name: myName,
+            x: Math.round(myX),
+            y: Math.round(myY),
+            cfg: avatarConfig,
+            meditating: isMeditating,
+            walkPhase: walkPhase,
+            chat: chatMessage
+        };
+        for (let id in connections) {
+            if (connections[id].open) {
+                connections[id].send(payload);
+            }
+        }
+        const now = Date.now();
+        for (let rId in remotePlayers) {
+            if (now - remotePlayers[rId].lastSeen > 5000) {
+                delete remotePlayers[rId];
+                updateOnlineUI();
+            }
+        }
+    }, 100);
+}
+
+function updateOnlineUI() {
+    const count = 1 + Object.keys(remotePlayers).length;
+    document.getElementById('online-count').innerText = `● Đang online chung: ${count} hành giả`;
+}
+
+function toggleMeditate() {
+    isMeditating = !isMeditating;
+    const btn = document.getElementById('meditate-btn');
+    if (isMeditating) {
+        btn.innerText = '🚶 Đứng Dậy';
+        btn.classList.add('meditating');
+    } else {
+        btn.innerText = '🧘 Ngồi Thiền';
+        btn.classList.remove('meditating');
+    }
+}
+
+function handleChatKey(e) {
+    if (e.key === 'Enter') {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (text) {
+            chatMessage = text;
+            chatTimer = 360;
+        }
+        input.value = '';
+        input.blur();
+    }
+}
+
+function canMoveTo(nx, ny) {
+    if (nx < 30 || nx > MAP_WIDTH - 30 || ny < 40 || ny > MAP_HEIGHT - 30) return false;
+    if (ny > RIVER_Y - 10 && ny < RIVER_Y + RIVER_H + 10) {
+        if (nx < BRIDGE.x + 8 || nx > BRIDGE.x + BRIDGE.w - 8) return false;
+    }
+    const distPond = Math.hypot(nx - POND.x, ny - POND.y);
+    if (distPond < POND.r + 12) return false;
+    if (nx > TEMPLE.x + 180 && nx < TEMPLE.x + 320 && ny > TEMPLE.y + 20 && ny < TEMPLE.y + 85) return false;
+    return true;
+}
+
+function update() {
+    if (!isMeditating) {
+        let dx = 0, dy = 0;
+        const speed = 3.2;
+        if (keys['w'] || keys['arrowup']) dy -= 1;
+        if (keys['s'] || keys['arrowdown']) dy += 1;
+        if (keys['a'] || keys['arrowleft']) dx -= 1;
+        if (keys['d'] || keys['arrowright']) dx += 1;
+
+        if (dx !== 0 || dy !== 0) {
+            const len = Math.hypot(dx, dy);
+            dx = (dx / len) * speed;
+            dy = (dy / len) * speed;
+
+            if (canMoveTo(myX + dx, myY)) myX += dx;
+            if (canMoveTo(myX, myY + dy)) myY += dy;
+            walkPhase += 0.25;
+        } else {
+            walkPhase = 0;
+        }
+    }
+
+    if (chatTimer > 0) {
+        chatTimer--;
+        if (chatTimer === 0) chatMessage = '';
+    }
+}
+
+function draw(time) {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const camX = Math.floor(canvas.width / 2 - myX);
+    const camY = Math.floor(canvas.height / 2 - myY);
+
+    ctx.save();
+    ctx.translate(camX, camY);
+
+    drawMap(ctx, time);
+
+    let allEntities = [
+        { x: myX, y: myY, name: myName, cfg: avatarConfig, meditating: isMeditating, walkPhase: walkPhase, chat: chatMessage }
+    ];
+    for (let id in remotePlayers) {
+        allEntities.push(remotePlayers[id]);
+    }
+    allEntities.sort((a, b) => a.y - b.y);
+
+    allEntities.forEach(p => {
+        drawChibiCharacter(ctx, p.x, p.y, p.name, p.cfg, p.meditating, p.walkPhase, p.chat, time, 1);
+    });
+
+    ctx.restore();
+}
+
+function gameLoop(time) {
+    update();
+    draw(time);
+    requestAnimationFrame(gameLoop);
+}
+
+initCreatorUI();
+requestAnimationFrame(gameLoop);
+</script>
+
+</body>
+</html>
