@@ -473,21 +473,29 @@ const HERMITAGES = [
     { x: 1840, y: 780, r: 46, name: 'Chánh Định' }
 ];
 
-const POND = { x: 1680, y: 1020, r: 190 };
+// Bể cá hình Elip dịch sâu lên đất liền (y: 880)
+const POND = { x: 1680, y: 880, rx: 195, ry: 115 };
+
+// Hoa sen mọc phân bổ tự nhiên trong lòng bể Elip
 const LOTUS_FLOWERS = [];
-for (let i = 0; i < 16; i++) {
-    const ang = Math.PI * 0.1 + (i / 15) * Math.PI * 0.8;
-    const dist = 50 + (i % 3) * 42;
+for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * Math.PI * 2;
+    const distScale = 0.25 + (i % 3) * 0.22;
     LOTUS_FLOWERS.push({
-        x: POND.x + Math.cos(ang) * dist,
-        y: POND.y + Math.sin(ang) * dist * 0.75,
-        phase: i * 0.7, isPink: i % 2 === 0
+        x: POND.x + Math.cos(ang) * (POND.rx * distScale),
+        y: POND.y + Math.sin(ang) * (POND.ry * distScale),
+        phase: i * 0.85,
+        isPink: i % 2 === 0
     });
 }
 
+// 7 con cá 7 màu bơi chậm rãi, thư thái (giảm tốc độ xuống 0.0012 - 0.0022)
 const KOI_COLORS = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff', '#f50057'];
 const KOI_FISH = KOI_COLORS.map((col, idx) => ({
-    color: col, angle: idx * 0.9, radius: 45 + idx * 16, speed: 0.00018 + (idx % 3) * 0.003
+    color: col,
+    angle: (idx * Math.PI * 2) / 7,
+    radiusRatio: 0.35 + (idx % 4) * 0.14,
+    speed: 0.0012 + (idx % 3) * 0.0004
 }));
 
 const STONE_LANTERNS = [
@@ -679,38 +687,123 @@ function drawWindingRiverAndBridge(ctx, time, isNight) {
 function drawSemicircleLotusPond(ctx, time, isNight) {
     ctx.save();
     ctx.translate(POND.x, POND.y);
-    ctx.fillStyle = isNight ? '#103447' : '#1f7a9c';
-    ctx.strokeStyle = isNight ? '#3e4a3d' : '#7c8b74';
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.arc(0, 0, POND.r, 0, Math.PI, false); ctx.closePath(); ctx.fill(); ctx.stroke();
 
+    // 1. Vẽ viền đất ẩm và mặt nước hình Elip
+    ctx.fillStyle = isNight ? '#103447' : '#1f7a9c';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, POND.rx, POND.ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Vòng gợn sóng nhẹ lan tỏa trên mặt nước
+    ctx.strokeStyle = isNight ? 'rgba(129, 212, 250, 0.15)' : 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1.5;
+    const ripple = (time * 0.015) % 25;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, POND.rx * 0.5 + ripple, POND.ry * 0.5 + ripple * 0.6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2. Vẽ các cục đá cuội tự nhiên xếp bao quanh viền bể Elip
+    const stoneCount = 34;
+    for (let i = 0; i < stoneCount; i++) {
+        const a = (i / stoneCount) * Math.PI * 2;
+        const sx = Math.cos(a) * (POND.rx + 4);
+        const sy = Math.sin(a) * (POND.ry + 4);
+        const stoneRx = 14 + (i % 3) * 5;
+        const stoneRy = 10 + ((i + 1) % 3) * 4;
+
+        // Bóng đá
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 4, stoneRx, stoneRy, a, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Thân đá cuội (màu xám xanh / xám nâu xen kẽ)
+        ctx.fillStyle = isNight
+            ? (i % 2 === 0 ? '#37474f' : '#455a64')
+            : (i % 2 === 0 ? '#78909c' : '#90a4ae');
+        ctx.strokeStyle = isNight ? '#1c262b' : '#455a64';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, stoneRx, stoneRy, a * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Điểm sáng nhẹ trên đỉnh viên đá
+        if (!isNight) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.beginPath();
+            ctx.ellipse(sx - 3, sy - 3, stoneRx * 0.4, stoneRy * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // 3. Vẽ 7 con cá 7 màu bơi lội thong thả, uốn lượn theo quỹ đạo Elip
     KOI_FISH.forEach((f, idx) => {
         const t = time * f.speed + f.angle;
-        const fx = Math.cos(t) * (f.radius * 0.85);
-        const fy = 22 + Math.abs(Math.sin(t * 0.7)) * (f.radius * 0.65);
-        const dir = -Math.sin(t) >= 0 ? 1 : -1;
-        ctx.save(); ctx.translate(fx, fy); ctx.scale(dir, 1);
+        const rx = POND.rx * f.radiusRatio;
+        const ry = POND.ry * f.radiusRatio;
+
+        const fx = Math.cos(t) * rx;
+        const fy = Math.sin(t) * ry;
+
+        // Tính góc xoay đầu cá theo tiếp tuyến đường Elip để cá bơi cực mượt
+        const vx = -Math.sin(t) * rx;
+        const vy = Math.cos(t) * ry;
+        const heading = Math.atan2(vy, vx);
+
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(heading);
+
+        // Thân cá
         ctx.fillStyle = f.color;
-        ctx.beginPath(); ctx.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-        const tailWag = Math.sin(time * 0.02 + idx) * 3;
-        ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-15, -4 + tailWag); ctx.lineTo(-15, 4 + tailWag); ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 10, 4.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Đuôi cá vẫy nhẹ nhàng
+        const tailWag = Math.sin(time * 0.008 + idx) * 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-9, 0);
+        ctx.lineTo(-16, -4 + tailWag);
+        ctx.lineTo(-16, 4 + tailWag);
+        ctx.closePath();
+        ctx.fill();
+
         ctx.restore();
     });
+
     ctx.restore();
 
+    // 4. Vẽ lá sen & hoa sen mọc cao vươn khỏi mặt nước, đung đưa nhẹ theo gió
     LOTUS_FLOWERS.forEach(lf => {
-        const sway = Math.sin(time * 0.0025 + lf.phase) * 5;
+        const sway = Math.sin(time * 0.0018 + lf.phase) * 4.5;
+
+        // Lá sen nằm trên mặt nước
         ctx.fillStyle = isNight ? '#1b4d20' : '#388e3c';
-        ctx.beginPath(); ctx.ellipse(lf.x, lf.y, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(lf.x, lf.y, 17, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-        ctx.strokeStyle = isNight ? '#2e7d32' : '#66bb6a'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(lf.x, lf.y);
-        ctx.quadraticCurveTo(lf.x + sway * 0.5, lf.y - 14, lf.x + sway, lf.y - 26); ctx.stroke();
+        // Cuống sen vươn cao
+        ctx.strokeStyle = isNight ? '#2e7d32' : '#66bb6a';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(lf.x, lf.y);
+        ctx.quadraticCurveTo(lf.x + sway * 0.5, lf.y - 16, lf.x + sway, lf.y - 28);
+        ctx.stroke();
 
+        // Búp hoa sen nở cao trên mặt nước
         ctx.fillStyle = lf.isPink ? '#f48fb1' : '#ffffff';
-        ctx.beginPath(); ctx.ellipse(lf.x + sway, lf.y - 28, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(lf.x + sway, lf.y - 30, 8, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nhụy vàng
         ctx.fillStyle = '#fdd835';
-        ctx.beginPath(); ctx.arc(lf.x + sway, lf.y - 28, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(lf.x + sway, lf.y - 30, 2.5, 0, Math.PI * 2);
+        ctx.fill();
     });
 }
 
@@ -1225,16 +1318,7 @@ function checkInteractionArrival() {
 }
 
 function canMoveTo(nx, ny) {
-    if (nx < 35 || nx > MAP_WIDTH - 35 || ny < 200 || ny > MAP_HEIGHT - 35) return false;
-    const ry = getRiverCenterY(nx);
-    if (Math.abs(ny - ry) < RIVER_HALF_H - 6) {
-        if (Math.abs(nx - BRIDGE_X) > 48) return false;
-    }
     if (ny >= POND.y - 5 && Math.hypot(nx - POND.x, ny - POND.y) < POND.r + 8) return false;
-    const cx = TEMPLE.x + TEMPLE.w / 2;
-    if (Math.abs(nx - cx) < 95 && ny > TEMPLE.y + 40 && ny < TEMPLE.y + 150) return false;
-    return true;
-}
 
 function toggleMeditate() {
     isMeditating = !isMeditating;
@@ -1246,6 +1330,10 @@ function toggleMeditate() {
         btn.innerText = '🧘 Ngồi Thiền'; btn.classList.remove('meditating');
     }
 }
+    // Va chạm bể cá Elip (tính cả viền đá bao quanh)
+const normX = (nx - POND.x) / (POND.rx + 18);
+const normY = (ny - POND.y) / (POND.ry + 18);
+if (normX * normX + normY * normY < 1) return false;
 
 function handleChatKey(e) {
     if (e.key === 'Enter') {
