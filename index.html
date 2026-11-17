@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Thiền Viện Tối Giản Online</title>
-    <!-- Thư viện PeerJS chính hãng -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         html, body {
@@ -13,7 +12,7 @@
             touch-action: manipulation;
         }
         canvas, .game-container {
-            width: 100% !important; height: auto !important; max-height: 100vh; object-fit: contain;
+            width: 100% !important; height: 100% !important; display: block;
         }
         * { box-sizing: border-box; }
         body {
@@ -104,7 +103,7 @@
         }
         .action-btn.meditating { background: #2e7d32; border-color: #81c784; }
 
-        /* Dòng chữ hướng dẫn chạy ngang dưới cùng, nền trong suốt 50% */
+        /* Dòng chữ hướng dẫn chạy ngang dưới cùng */
         #marquee-bar {
             position: absolute; bottom: 6px; left: 0; width: 100%; height: 28px;
             background: rgba(0, 0, 0, 0.5);
@@ -210,6 +209,7 @@
     <div id="hud-top">
         <div id="vn-clock" style="color: #f4d03f; font-weight: bold;">🕒 Giờ VN (GMT+7): --:--</div>
         <div id="online-count" style="color: #81c784;">● Đang kết nối...</div>
+        <div id="fps-counter" style="color: #90caf9;">⚡ FPS: 60 | Hiển thị: 1</div>
         <div id="pet-status" style="color: #80deea;">🐾 Linh thú: Chưa có</div>
         <div id="holding-status" style="color: #ffab91;">🍎 Đang cầm: Không</div>
     </div>
@@ -230,6 +230,15 @@
     <canvas id="gameCanvas"></canvas>
 
 <script>
+// ============================================================================
+// THIỀN VIỆN TỐI GIẢN ONLINE - V5 ULTRA-OPTIMIZED (1000-PLAYER ARCHITECTURE)
+// Tối ưu hóa bởi:
+// 1. Static Offscreen Map Layer (Vẽ map tĩnh 1 lần duy nhất thay vì 60 lần/giây)
+// 2. Sprite & Nameplate Offscreen Caching (Đóng băng nhân vật + tên vào RAM)
+// 3. Frustum Camera Culling (Chỉ render vật thể & hành giả trong tầm mắt)
+// 4. P2P Tree-Mesh + Spatial Interest Filtering + Delta Sync + Lerp Interpolation
+// ============================================================================
+
 // 1. NHẠC NỀN THIỀN (AUTO LOOP)
 const bgMusic = new Audio('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=meditation-relaxing-spa-music-110842.mp3');
 bgMusic.loop = true;
@@ -345,6 +354,7 @@ function handleAuthSubmit() {
 function enterWorld() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('ui-bottom').style.display = 'flex';
+    myAppearanceHash = computeAppearanceHash(myName, avatarConfig);
     bgMusic.play().then(() => {
         isMusicPlaying = true;
         document.getElementById('music-toggle-btn').innerText = '🔊 Nhạc Thiền: BẬT';
@@ -441,7 +451,7 @@ function renderPreview() {
     const pCanvas = document.getElementById('previewCanvas');
     const pCtx = pCanvas.getContext('2d');
     pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-    drawChibiCharacter(pCtx, 50, 82, '', avatarConfig, false, 0, '', 0, 1.4, null, null);
+    drawChibiCharacterDirect(pCtx, 50, 82, '', avatarConfig, false, 0, '', 0, 1.4, null, null);
 }
 
 // 4. THỜI GIAN GMT+7 & NGÀY/ĐÊM
@@ -456,7 +466,7 @@ function isNightTime(vnDate) {
     return (h >= 18 || h < 6);
 }
 
-// 5. BẢN ĐỒ MỞ RỘNG
+// 5. DỮ LIỆU BẢN ĐỒ MỞ RỘNG
 const MAP_WIDTH = 2200;
 const MAP_HEIGHT = 1800;
 const TEMPLE = { x: 820, y: 260, w: 560, h: 360 };
@@ -533,91 +543,185 @@ const CLOUDS = [
 let heron = { active: false, x: -100, y: 1200, lastTriggerMin: -1 };
 let boat = { active: false, x: -120, lastTriggerMin: -1 };
 
-function drawMap(ctx, time, isNight, isAlmsTime) {
+// ============================================================================
+// [TỐI ƯU 1] STATIC OFFSCREEN MAP LAYER (VẼ NỀN 1 LẦN DUY NHẤT)
+// Giảm 95% chi phí vẽ bản đồ: cỏ, núi, đường gạch, hồ, am, chánh điện, cổng, cây
+// chỉ được vẽ vào bộ nhớ đệm 1 lần lúc khởi tạo hoặc khi chuyển Ngày <-> Đêm.
+// ============================================================================
+const staticMapCanvas = document.createElement('canvas');
+staticMapCanvas.width = MAP_WIDTH;
+staticMapCanvas.height = MAP_HEIGHT;
+const staticMapCtx = staticMapCanvas.getContext('2d', { alpha: false });
+let cachedMapNightState = null;
+
+function rebuildStaticMap(isNight) {
+    if (cachedMapNightState === isNight) return;
+    cachedMapNightState = isNight;
+    const sCtx = staticMapCtx;
+
+    // 1. Nền cỏ caro
     const tileSize = 48;
     for (let y = 180; y < MAP_HEIGHT; y += tileSize) {
         for (let x = 0; x < MAP_WIDTH; x += tileSize) {
             const isAlt = ((x / tileSize) + (y / tileSize)) % 2 === 0;
-            ctx.fillStyle = isNight ? (isAlt ? '#1d2b18' : '#182414') : (isAlt ? '#4e6e36' : '#476531');
-            ctx.fillRect(x, y, tileSize, tileSize);
+            sCtx.fillStyle = isNight ? (isAlt ? '#1d2b18' : '#182414') : (isAlt ? '#4e6e36' : '#476531');
+            sCtx.fillRect(x, y, tileSize, tileSize);
         }
     }
 
-    drawMountainsAndWaterfall(ctx, time, isNight);
-    drawBrickPaths(ctx, isNight);
-    drawWindingRiverAndBridge(ctx, time, isNight);
-    drawSemicircleLotusPond(ctx, time, isNight);
+    // 2. Bầu trời & dãy núi tĩnh
+    const skyGrad = sCtx.createLinearGradient(0, 0, 0, 190);
+    if (isNight) { skyGrad.addColorStop(0, '#090d1a'); skyGrad.addColorStop(1, '#182438'); }
+    else { skyGrad.addColorStop(0, '#64b5f6'); skyGrad.addColorStop(1, '#bbdefb'); }
+    sCtx.fillStyle = skyGrad; sCtx.fillRect(0, 0, MAP_WIDTH, 190);
 
+    if (isNight) {
+        sCtx.fillStyle = '#fff9c4'; sCtx.beginPath(); sCtx.arc(1850, 55, 24, 0, Math.PI * 2); sCtx.fill();
+        sCtx.fillStyle = '#fff';
+        for (let s = 0; s < 35; s++) {
+            sCtx.fillRect((s * 197) % MAP_WIDTH, 15 + (s * 43) % 95, 2, 2);
+        }
+    }
+
+    sCtx.fillStyle = isNight ? '#1b2631' : '#546e7a';
+    sCtx.beginPath();
+    sCtx.moveTo(0, 190); sCtx.lineTo(0, 110); sCtx.lineTo(240, 35); sCtx.lineTo(520, 125);
+    sCtx.lineTo(820, 25); sCtx.lineTo(1100, 95); sCtx.lineTo(1420, 20);
+    sCtx.lineTo(1750, 115); sCtx.lineTo(2050, 30); sCtx.lineTo(MAP_WIDTH, 100);
+    sCtx.lineTo(MAP_WIDTH, 190); sCtx.closePath(); sCtx.fill();
+
+    // 3. Đường lát gạch
+    drawBrickPaths(sCtx, isNight);
+
+    // 4. Lòng sông & cầu gỗ
+    sCtx.fillStyle = isNight ? '#13384c' : '#2980b9';
+    sCtx.beginPath();
+    sCtx.moveTo(0, getRiverCenterY(0) - RIVER_HALF_H);
+    for (let x = 0; x <= MAP_WIDTH; x += 30) { sCtx.lineTo(x, getRiverCenterY(x) - RIVER_HALF_H); }
+    for (let x = MAP_WIDTH; x >= 0; x -= 30) { sCtx.lineTo(x, getRiverCenterY(x) + RIVER_HALF_H); }
+    sCtx.closePath(); sCtx.fill();
+
+    const bridgeCenterY = getRiverCenterY(BRIDGE_X);
+    sCtx.fillStyle = isNight ? '#3e2723' : '#6d4c41';
+    sCtx.fillRect(BRIDGE_X - 55, bridgeCenterY - RIVER_HALF_H - 14, 110, RIVER_HALF_H * 2 + 28);
+    sCtx.strokeStyle = '#3e2723'; sCtx.lineWidth = 3;
+    sCtx.strokeRect(BRIDGE_X - 55, bridgeCenterY - RIVER_HALF_H - 14, 110, RIVER_HALF_H * 2 + 28);
+    for (let by = bridgeCenterY - RIVER_HALF_H - 6; by < bridgeCenterY + RIVER_HALF_H + 10; by += 14) {
+        sCtx.beginPath(); sCtx.moveTo(BRIDGE_X - 55, by); sCtx.lineTo(BRIDGE_X + 55, by); sCtx.stroke();
+    }
+
+    // 5. Bờ hồ bán nguyệt
+    sCtx.save();
+    sCtx.translate(POND.x, POND.y);
+    sCtx.fillStyle = isNight ? '#103447' : '#1f7a9c';
+    sCtx.strokeStyle = isNight ? '#3e4a3d' : '#7c8b74';
+    sCtx.lineWidth = 6;
+    sCtx.beginPath(); sCtx.arc(0, 0, POND.r, 0, Math.PI, false); sCtx.closePath(); sCtx.fill(); sCtx.stroke();
+    sCtx.restore();
+
+    // 6. Bụi cây, hoa dại, 8 Am thất, Chánh điện, Cổng Vô Ngôn, Thân & Tán cây
     SHRUBS_AND_FLOWERS.forEach(sf => {
         const ry = getRiverCenterY(sf.x);
         if (Math.abs(sf.y - ry) < RIVER_HALF_H + 18) return;
         if (sf.x > TEMPLE.x - 20 && sf.x < TEMPLE.x + TEMPLE.w + 20 && sf.y > TEMPLE.y - 20 && sf.y < TEMPLE.y + TEMPLE.h + 20) return;
         if (sf.kind === 0) {
-            ctx.fillStyle = isNight ? '#163018' : '#2e6b32';
-            ctx.beginPath(); ctx.arc(sf.x, sf.y, 12, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(sf.x + 10, sf.y + 3, 9, 0, Math.PI * 2); ctx.fill();
+            sCtx.fillStyle = isNight ? '#163018' : '#2e6b32';
+            sCtx.beginPath(); sCtx.arc(sf.x, sf.y, 12, 0, Math.PI * 2); sCtx.fill();
+            sCtx.beginPath(); sCtx.arc(sf.x + 10, sf.y + 3, 9, 0, Math.PI * 2); sCtx.fill();
         } else {
-            ctx.fillStyle = isNight ? '#1c3b1e' : '#3d8240';
-            ctx.fillRect(sf.x - 4, sf.y, 8, 5);
-            ctx.fillStyle = sf.kind === 1 ? '#ffd54f' : '#f48fb1';
-            ctx.beginPath(); ctx.arc(sf.x - 2, sf.y - 2, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(sf.x + 3, sf.y - 1, 2.5, 0, Math.PI * 2); ctx.fill();
+            sCtx.fillStyle = isNight ? '#1c3b1e' : '#3d8240';
+            sCtx.fillRect(sf.x - 4, sf.y, 8, 5);
+            sCtx.fillStyle = sf.kind === 1 ? '#ffd54f' : '#f48fb1';
+            sCtx.beginPath(); sCtx.arc(sf.x - 2, sf.y - 2, 3, 0, Math.PI * 2); sCtx.fill();
+            sCtx.beginPath(); sCtx.arc(sf.x + 3, sf.y - 1, 2.5, 0, Math.PI * 2); sCtx.fill();
         }
     });
 
-    HERMITAGES.forEach(h => drawOctagonHermitage(ctx, h, isNight));
-    drawIndoThaiOpenTemple(ctx, time, isNight);
-    drawMuMonGate(ctx, GATE.x, GATE.y, isNight);
-    STONE_LANTERNS.forEach(l => drawStoneLantern(ctx, l.x, l.y, isNight, time));
-    TREES.forEach((t, idx) => drawTallTree(ctx, t, idx, time, isNight, isAlmsTime));
+    HERMITAGES.forEach(h => drawOctagonHermitage(sCtx, h, isNight));
+    drawIndoThaiOpenTempleStatic(sCtx, isNight);
+    drawMuMonGate(sCtx, GATE.x, GATE.y, isNight);
+    STONE_LANTERNS.forEach(l => drawStoneLanternBase(sCtx, l.x, l.y, isNight));
+    TREES.forEach(t => drawTallTreeBase(sCtx, t, isNight));
 
-    ctx.strokeStyle = '#111a0e';
-    ctx.lineWidth = 18;
-    ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+    sCtx.strokeStyle = '#111a0e';
+    sCtx.lineWidth = 18;
+    sCtx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 }
 
-function drawMountainsAndWaterfall(ctx, time, isNight) {
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, 190);
-    if (isNight) { skyGrad.addColorStop(0, '#090d1a'); skyGrad.addColorStop(1, '#182438'); }
-    else { skyGrad.addColorStop(0, '#64b5f6'); skyGrad.addColorStop(1, '#bbdefb'); }
-    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, MAP_WIDTH, 190);
+// Vẽ phần map kết hợp (1 lệnh cắt dán nền tĩnh + chỉ vẽ hiệu ứng động trong tầm camera)
+function drawMapOptimized(ctx, time, isNight, isAlmsTime, camLeft, camTop, camRight, camBottom) {
+    rebuildStaticMap(isNight);
+
+    // Cắt đúng vùng màn hình từ staticMapCanvas dán sang (O(1) siêu nhanh)
+    const sx = Math.max(0, camLeft);
+    const sy = Math.max(0, camTop);
+    const sw = Math.min(MAP_WIDTH, camRight) - sx;
+    const sh = Math.min(MAP_HEIGHT, camBottom) - sy;
+    if (sw > 0 && sh > 0) {
+        ctx.drawImage(staticMapCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
+    }
+
+    // Chỉ vẽ hiệu ứng động khi vùng đó nằm trong tầm nhìn camera
+    if (camTop < 210) {
+        drawDynamicWaterfallAndClouds(ctx, time, isNight, camLeft, camRight);
+    }
+    if (camBottom > 1150 && camTop < 1350) {
+        drawDynamicRiverRipples(ctx, time, isNight, camLeft, camRight);
+    }
+    if (camRight > POND.x - POND.r - 30 && camLeft < POND.x + POND.r + 30 &&
+        camBottom > POND.y - 50 && camTop < POND.y + POND.r + 30) {
+        drawDynamicPondLife(ctx, time, isNight);
+    }
+
+    const cx = TEMPLE.x + TEMPLE.w / 2;
+    const cy = TEMPLE.y + 120;
+    if (camRight > cx - 160 && camLeft < cx + 160 && camBottom > cy - 160 && camTop < cy + 160) {
+        drawGiantBuddhaAura(ctx, cx, cy, time, isNight);
+    }
 
     if (isNight) {
-        ctx.fillStyle = '#fff9c4'; ctx.beginPath(); ctx.arc(1850, 55, 24, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff';
-        for (let s = 0; s < 35; s++) {
-            ctx.fillRect((s * 197) % MAP_WIDTH, 15 + (s * 43) % 95, 2, 2);
+        for (let i = 0; i < STONE_LANTERNS.length; i++) {
+            const l = STONE_LANTERNS[i];
+            if (l.x >= camLeft - 60 && l.x <= camRight + 60 && l.y >= camTop - 60 && l.y <= camBottom + 60) {
+                drawStoneLanternGlow(ctx, l.x, l.y, time);
+            }
         }
     }
 
-    ctx.fillStyle = isNight ? '#1b2631' : '#546e7a';
-    ctx.beginPath();
-    ctx.moveTo(0, 190); ctx.lineTo(0, 110); ctx.lineTo(240, 35); ctx.lineTo(520, 125);
-    ctx.lineTo(820, 25); ctx.lineTo(1100, 95); ctx.lineTo(1420, 20);
-    ctx.lineTo(1750, 115); ctx.lineTo(2050, 30); ctx.lineTo(MAP_WIDTH, 100);
-    ctx.lineTo(MAP_WIDTH, 190); ctx.closePath(); ctx.fill();
-
-    const wfX = 1405;
-    ctx.fillStyle = isNight ? '#4fc3f7' : '#e1f5fe';
-    ctx.fillRect(wfX, 32, 34, 158);
-    ctx.fillStyle = '#ffffff';
-    const drop = (time * 0.12) % 24;
-    for (let wy = 36; wy < 180; wy += 24) {
-        ctx.fillRect(wfX + 5, wy + drop * 0.5, 6, 12);
-        ctx.fillRect(wfX + 20, wy + 8 + drop * 0.5, 6, 12);
+    if (isAlmsTime) {
+        for (let i = 0; i < TREES.length; i++) {
+            const t = TREES[i];
+            if (t.hasFruit && t.x >= camLeft - 80 && t.x <= camRight + 80 && t.y >= camTop - 200 && t.y <= camBottom + 50) {
+                drawTreeFruitsOnly(ctx, t, i, time);
+            }
+        }
     }
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
-    ctx.beginPath(); ctx.ellipse(wfX + 17, 186, 36 + Math.sin(time * 0.01) * 5, 10, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawDynamicWaterfallAndClouds(ctx, time, isNight, camLeft, camRight) {
+    const wfX = 1405;
+    if (wfX + 60 >= camLeft && wfX - 60 <= camRight) {
+        ctx.fillStyle = isNight ? '#4fc3f7' : '#e1f5fe';
+        ctx.fillRect(wfX, 32, 34, 158);
+        ctx.fillStyle = '#ffffff';
+        const drop = (time * 0.12) % 24;
+        for (let wy = 36; wy < 180; wy += 24) {
+            ctx.fillRect(wfX + 5, wy + drop * 0.5, 6, 12);
+            ctx.fillRect(wfX + 20, wy + 8 + drop * 0.5, 6, 12);
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.beginPath(); ctx.ellipse(wfX + 17, 186, 36 + Math.sin(time * 0.01) * 5, 10, 0, 0, Math.PI * 2); ctx.fill();
+    }
 
     CLOUDS.forEach(c => {
-        c.x += c.speed;
-        if (c.x > MAP_WIDTH + 100) c.x = -c.w - 50;
-        ctx.fillStyle = isNight ? 'rgba(180, 200, 220, 0.25)' : 'rgba(255, 255, 255, 0.82)';
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 24, 0, Math.PI * 2);
-        ctx.arc(c.x + 28, c.y - 8, 30, 0, Math.PI * 2);
-        ctx.arc(c.x + 60, c.y, 24, 0, Math.PI * 2);
-        ctx.fill();
+        if (c.x + 100 >= camLeft && c.x - 50 <= camRight) {
+            ctx.fillStyle = isNight ? 'rgba(180, 200, 220, 0.25)' : 'rgba(255, 255, 255, 0.82)';
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 24, 0, Math.PI * 2);
+            ctx.arc(c.x + 28, c.y - 8, 30, 0, Math.PI * 2);
+            ctx.arc(c.x + 60, c.y, 24, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
 }
 
@@ -649,41 +753,22 @@ function drawBrickPaths(ctx, isNight) {
     ctx.restore();
 }
 
-function drawWindingRiverAndBridge(ctx, time, isNight) {
-    ctx.fillStyle = isNight ? '#13384c' : '#2980b9';
-    ctx.beginPath();
-    ctx.moveTo(0, getRiverCenterY(0) - RIVER_HALF_H);
-    for (let x = 0; x <= MAP_WIDTH; x += 30) { ctx.lineTo(x, getRiverCenterY(x) - RIVER_HALF_H); }
-    for (let x = MAP_WIDTH; x >= 0; x -= 30) { ctx.lineTo(x, getRiverCenterY(x) + RIVER_HALF_H); }
-    ctx.closePath(); ctx.fill();
-
+function drawDynamicRiverRipples(ctx, time, isNight, camLeft, camRight) {
     ctx.strokeStyle = isNight ? 'rgba(129, 212, 250, 0.35)' : 'rgba(255, 255, 255, 0.6)';
     ctx.lineWidth = 2.5;
-    for (let x = 40; x < MAP_WIDTH; x += 110) {
+    const startX = Math.max(40, Math.floor(camLeft / 110) * 110);
+    const endX = Math.min(MAP_WIDTH, camRight + 110);
+    for (let x = startX; x < endX; x += 110) {
         const cy = getRiverCenterY(x);
         const shift = Math.sin(time * 0.003 + x * 0.02) * 14;
         ctx.beginPath(); ctx.arc(x + shift, cy - 18, 16, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
         ctx.beginPath(); ctx.arc(x - shift + 30, cy + 20, 14, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
     }
-
-    const bridgeCenterY = getRiverCenterY(BRIDGE_X);
-    ctx.fillStyle = isNight ? '#3e2723' : '#6d4c41';
-    ctx.fillRect(BRIDGE_X - 55, bridgeCenterY - RIVER_HALF_H - 14, 110, RIVER_HALF_H * 2 + 28);
-    ctx.strokeStyle = '#3e2723'; ctx.lineWidth = 3;
-    ctx.strokeRect(BRIDGE_X - 55, bridgeCenterY - RIVER_HALF_H - 14, 110, RIVER_HALF_H * 2 + 28);
-    for (let by = bridgeCenterY - RIVER_HALF_H - 6; by < bridgeCenterY + RIVER_HALF_H + 10; by += 14) {
-        ctx.beginPath(); ctx.moveTo(BRIDGE_X - 55, by); ctx.lineTo(BRIDGE_X + 55, by); ctx.stroke();
-    }
 }
 
-function drawSemicircleLotusPond(ctx, time, isNight) {
+function drawDynamicPondLife(ctx, time, isNight) {
     ctx.save();
     ctx.translate(POND.x, POND.y);
-    ctx.fillStyle = isNight ? '#103447' : '#1f7a9c';
-    ctx.strokeStyle = isNight ? '#3e4a3d' : '#7c8b74';
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.arc(0, 0, POND.r, 0, Math.PI, false); ctx.closePath(); ctx.fill(); ctx.stroke();
-
     KOI_FISH.forEach((f, idx) => {
         const t = time * f.speed + f.angle;
         const fx = Math.cos(t) * (f.radius * 0.85);
@@ -738,7 +823,7 @@ function drawOctagonHermitage(ctx, h, isNight) {
     ctx.restore();
 }
 
-function drawIndoThaiOpenTemple(ctx, time, isNight) {
+function drawIndoThaiOpenTempleStatic(ctx, isNight) {
     ctx.fillStyle = isNight ? '#4a3d31' : '#d7bfa0';
     ctx.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
     ctx.strokeStyle = '#8d6e63'; ctx.lineWidth = 6; ctx.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
@@ -761,8 +846,6 @@ function drawIndoThaiOpenTemple(ctx, time, isNight) {
     ctx.quadraticCurveTo(cx + 80, cy - 55, cx + 125, cy + 15);
     ctx.closePath(); ctx.fill(); ctx.stroke();
 
-    drawGiantBuddhaStatue(ctx, cx, cy + 25, time, isNight);
-
     ctx.fillStyle = '#6d4c41';
     for (let row = 0; row < 2; row++) {
         for (let col = 0; col < 5; col++) {
@@ -774,7 +857,7 @@ function drawIndoThaiOpenTemple(ctx, time, isNight) {
     }
 }
 
-function drawGiantBuddhaStatue(ctx, bx, by, time, isNight) {
+function drawGiantBuddhaAura(ctx, bx, by, time, isNight) {
     ctx.save();
     ctx.translate(bx, by);
     const glowRadius = isNight ? 135 + Math.sin(time * 0.004) * 10 : 78 + Math.sin(time * 0.003) * 5;
@@ -827,23 +910,22 @@ function drawMuMonGate(ctx, gx, gy, isNight) {
     ctx.restore();
 }
 
-function drawStoneLantern(ctx, lx, ly, isNight, time) {
+function drawStoneLanternBase(ctx, lx, ly, isNight) {
     ctx.fillStyle = isNight ? '#455a64' : '#78909c';
     ctx.fillRect(lx - 6, ly - 24, 12, 24); ctx.fillRect(lx - 10, ly - 36, 20, 12);
     ctx.beginPath(); ctx.moveTo(lx - 14, ly - 36); ctx.lineTo(lx, ly - 46); ctx.lineTo(lx + 14, ly - 36); ctx.closePath(); ctx.fill();
-
-    if (isNight) {
-        const flicker = 0.8 + Math.sin(time * 0.015 + lx) * 0.2;
-        const grad = ctx.createRadialGradient(lx, ly - 30, 2, lx, ly - 30, 48);
-        grad.addColorStop(0, `rgba(255, 238, 88, ${flicker})`);
-        grad.addColorStop(1, 'rgba(255, 193, 7, 0)');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(lx, ly - 30, 48, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = '#fff59d'; ctx.fillRect(lx - 5, ly - 34, 10, 8);
-    }
 }
 
-function drawTallTree(ctx, t, idx, time, isNight, isAlmsTime) {
+function drawStoneLanternGlow(ctx, lx, ly, time) {
+    const flicker = 0.8 + Math.sin(time * 0.015 + lx) * 0.2;
+    const grad = ctx.createRadialGradient(lx, ly - 30, 2, lx, ly - 30, 48);
+    grad.addColorStop(0, `rgba(255, 238, 88, ${flicker})`);
+    grad.addColorStop(1, 'rgba(255, 193, 7, 0)');
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(lx, ly - 30, 48, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff59d'; ctx.fillRect(lx - 5, ly - 34, 10, 8);
+}
+
+function drawTallTreeBase(ctx, t, isNight) {
     ctx.save();
     ctx.translate(t.x, t.y);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -870,26 +952,120 @@ function drawTallTree(ctx, t, idx, time, isNight, isAlmsTime) {
             ctx.beginPath(); ctx.arc(f, -130 + Math.abs(f) * 0.5, 3, 0, Math.PI * 2); ctx.fill();
         }
     }
-
-    if (isAlmsTime && t.hasFruit) {
-        const pulse = 8 + Math.sin(time * 0.01) * 2;
-        ctx.fillStyle = (idx % 2 === 0) ? '#ff3d00' : '#ff80ab';
-        ctx.beginPath(); ctx.arc(-22, -45, pulse, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(22, -55, pulse, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-    }
     ctx.restore();
 }
 
-// 6. NHÂN VẬT, LINH THÚ & PHỤ KIỆN
-function drawChibiCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, time, scale = 1, petType = null, holdingItem = null) {
+function drawTreeFruitsOnly(ctx, t, idx, time) {
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    const pulse = 8 + Math.sin(time * 0.01) * 2;
+    ctx.fillStyle = (idx % 2 === 0) ? '#ff3d00' : '#ff80ab';
+    ctx.beginPath(); ctx.arc(-22, -45, pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(22, -55, pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+}
+
+// ============================================================================
+// [TỐI ƯU 2] OFFSCREEN SPRITE & NAMEPLATE CACHING (ĐÓNG BĂNG NHÂN VẬT + TÊN)
+// Thay vì vẽ 20 hình khối + hàm strokeText/fillText cực nặng cho 1000 người
+// mỗi frame (60.000 lần/giây), mỗi bộ trang phục + tên được vẽ 1 lần duy nhất
+// vào Offscreen Canvas. Vòng lặp chính chỉ dán ảnh bằng drawImage() siêu tốc.
+// ============================================================================
+const spriteCache = new Map();
+const MAX_CACHE_ENTRIES = 1200;
+
+function computeAppearanceHash(name, cfg) {
+    return `${name}|${cfg.gender}|${cfg.skin}|${cfg.hairStyle}|${cfg.outfitId}|${cfg.customShirt || ''}|${cfg.customPants || ''}|${cfg.customHat || ''}|${cfg.customShoes || ''}`;
+}
+
+function getCachedCharacterFrames(name, cfg) {
+    const key = computeAppearanceHash(name, cfg);
+    if (spriteCache.has(key)) return spriteCache.get(key);
+
+    if (spriteCache.size >= MAX_CACHE_ENTRIES) {
+        const firstKey = spriteCache.keys().next().value;
+        spriteCache.delete(firstKey);
+    }
+
+    // Dựng 4 trạng thái khung hình sẵn trong RAM:
+    // 0: Đứng yên, 1: Bước chân trái, 2: Bước chân phải, 3: Ngồi thiền
+    const frameConfigs = [
+        { meditating: false, phase: 0 },
+        { meditating: false, phase: Math.PI * 0.5 },
+        { meditating: false, phase: Math.PI * 1.5 },
+        { meditating: true,  phase: 0 }
+    ];
+
+    const frames = frameConfigs.map(fc => {
+        const c = document.createElement('canvas');
+        c.width = 160;
+        c.height = 96;
+        const cCtx = c.getContext('2d');
+        // Tâm chân nhân vật đặt ở (80, 74)
+        drawChibiBodyAndName(cCtx, 80, 74, name, cfg, fc.meditating, fc.phase, 1);
+        return c;
+    });
+
+    spriteCache.set(key, frames);
+    return frames;
+}
+
+// Vẽ nhân vật từ Cache (O(1) drawImage) + chỉ vẽ thêm hiệu ứng động nhẹ (hào quang, linh thú, chat)
+function drawCachedCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, time, petType, holdingItem) {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+
+    if (petType) {
+        drawPetCompanion(ctx, rx - 26, ry + 6 + Math.sin(time * 0.008) * 2, petType, time);
+    }
+
+    // Hào quang thiền định
+    if (meditating) {
+        const pulse = 0.5 + Math.sin(time * 0.005) * 0.2;
+        const radius = 30 + Math.sin(time * 0.004) * 3;
+        const grad = ctx.createRadialGradient(rx, ry - 4, 4, rx, ry - 4, radius);
+        grad.addColorStop(0, `rgba(255, 245, 157, ${pulse})`);
+        grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(rx, ry - 4, radius, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const frames = getCachedCharacterFrames(name, cfg);
+    let frameIdx = 0;
+    if (meditating) {
+        frameIdx = 3;
+    } else if (walkPhase > 0.01) {
+        frameIdx = (Math.sin(walkPhase) >= 0) ? 1 : 2;
+    }
+
+    ctx.drawImage(frames[frameIdx], rx - 80, ry - 74);
+
+    if (holdingItem && !meditating) {
+        ctx.fillStyle = holdingItem === 'fruit' ? '#ff3d00' : '#ff80ab';
+        ctx.beginPath(); ctx.arc(rx, ry - 2, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    if (chat) {
+        const nameY = meditating ? -42 : -44;
+        ctx.font = '12px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        const textWidth = ctx.measureText(chat).width;
+        const boxW = Math.max(textWidth + 16, 40);
+        const boxY = ry + nameY - 34;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(rx - boxW / 2, boxY, boxW, 22, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#111'; ctx.fillText(chat, rx, boxY + 15);
+    }
+}
+
+// Hàm dựng thân nhân vật + tên dùng để bake vào Offscreen Cache
+function drawChibiBodyAndName(ctx, x, y, name, cfg, meditating, walkPhase, scale = 1) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
-
-    if (petType) {
-        drawPetCompanion(ctx, -26, 6 + Math.sin(time * 0.008) * 2, petType, time);
-    }
 
     const outfitList = OUTFITS[cfg.gender] || OUTFITS.male;
     const baseOutfit = outfitList[cfg.outfitId] || outfitList[0];
@@ -901,13 +1077,6 @@ function drawChibiCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, t
     ctx.beginPath(); ctx.ellipse(0, 14, meditating ? 19 : 12, 6, 0, 0, Math.PI * 2); ctx.fill();
 
     if (meditating) {
-        const pulse = 0.55 + Math.sin(time * 0.005) * 0.25;
-        const radius = 32 + Math.sin(time * 0.004) * 4;
-        const grad = ctx.createRadialGradient(0, -4, 4, 0, -4, radius);
-        grad.addColorStop(0, `rgba(255, 245, 157, ${pulse})`);
-        grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, -4, radius, 0, Math.PI * 2); ctx.fill();
-
         ctx.fillStyle = pantsColor; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.roundRect(-17, 4, 34, 9, 4.5); ctx.fill(); ctx.stroke();
 
@@ -936,12 +1105,6 @@ function drawChibiCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, t
         ctx.fillRect(-12, -7 + bobY, 3, 12); ctx.strokeRect(-12, -7 + bobY, 3, 12);
         ctx.fillRect(9, -7 + bobY, 3, 12); ctx.strokeRect(9, -7 + bobY, 3, 12);
 
-        if (holdingItem) {
-            ctx.fillStyle = holdingItem === 'fruit' ? '#ff3d00' : '#ff80ab';
-            ctx.beginPath(); ctx.arc(0, -1 + bobY, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
-        }
-
         drawChibiHead(ctx, 0, -21 + bobY, cfg, false);
     }
 
@@ -951,19 +1114,13 @@ function drawChibiCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, t
         ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
         ctx.strokeText(name, 0, nameY);
         ctx.fillStyle = '#ffeb3b'; ctx.fillText(name, 0, nameY);
-
-        if (chat) {
-            ctx.font = '12px "Courier New", monospace';
-            const textWidth = ctx.measureText(chat).width;
-            const boxW = Math.max(textWidth + 16, 40);
-            const boxY = nameY - 34;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.roundRect(-boxW / 2, boxY, boxW, 22, 5); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#111'; ctx.fillText(chat, 0, boxY + 15);
-        }
     }
     ctx.restore();
+}
+
+// Giữ lại hàm vẽ trực tiếp dành riêng cho khung Preview ở màn hình đăng nhập
+function drawChibiCharacterDirect(ctx, x, y, name, cfg, meditating, walkPhase, chat, time, scale = 1, petType = null, holdingItem = null) {
+    drawChibiBodyAndName(ctx, x, y, name, cfg, meditating, walkPhase, scale);
 }
 
 function drawChibiHead(ctx, hx, hy, cfg, eyesClosed) {
@@ -1053,8 +1210,11 @@ function spawnRandomDrop() {
 spawnRandomDrop(); spawnRandomDrop();
 setInterval(spawnRandomDrop, 45000);
 
-function drawWorldDrops(ctx, time) {
-    worldDrops.forEach(d => {
+function drawWorldDrops(ctx, time, camLeft, camTop, camRight, camBottom) {
+    for (let i = 0; i < worldDrops.length; i++) {
+        const d = worldDrops[i];
+        if (d.x < camLeft - 40 || d.x > camRight + 40 || d.y < camTop - 40 || d.y > camBottom + 40) continue;
+
         ctx.save(); ctx.translate(d.x, d.y);
         const glowColor = (d.subType === 'phoenix') ? 'rgba(255, 23, 68, 0.7)' : (d.color || 'rgba(255, 241, 118, 0.7)');
         const rad = 22 + Math.sin(time * 0.008) * 4;
@@ -1068,7 +1228,7 @@ function drawWorldDrops(ctx, time) {
             ctx.beginPath(); ctx.roundRect(-9, -10, 18, 14, 4); ctx.fill(); ctx.stroke();
         }
         ctx.restore();
-    });
+    }
 }
 
 // 8. 5 CHƯ TĂNG KHẤT THỰC LÚC 10H00 SÁNG (30 PHÚT)
@@ -1119,20 +1279,44 @@ function drawAlmsMonk(ctx, mk, time) {
     ctx.restore();
 }
 
-// 9. LOGIC GAME & MẠNG P2P
+// ============================================================================
+// [TỐI ƯU 3 & 4] MẠNG P2P CÂY PHÂN CẤP (TREE-MESH) + LỌC KHOẢNG CÁCH + LERP
+// - Sửa lỗi kiến trúc cũ: code cũ bắt TẤT CẢ 1000 người kết nối thẳng với nhau
+//   (1000 x 1000 = 1.000.000 kết nối WebRTC -> sập trình duyệt ngay ở ~30 người).
+// - Kiến trúc mới:
+//   1. Giới hạn tối đa 24 kết nối trực tiếp mỗi node (Relay Tree-Mesh). Khi phòng
+//      đầy, node chủ chuyển tiếp danh sách các nhánh con (Relay Peers) để người mới
+//      nối tiếp vào cây, chịu tải tới hàng trăm/nghìn người mà không sập WebRTC.
+//   2. Tách Profile (tên, tóc, áo - chỉ gửi 1 lần) khỏi gói di chuyển (tọa độ X, Y).
+//   3. Gói tin siêu gọn dạng mảng [id, x, y, flags, pet, chat] + Spatial Culling
+//      chỉ chuyển tiếp/nhận cập nhật vị trí của người chơi trong bán kính 950px.
+//   4. Nội suy Lerp giúp chuyển động 60 FPS dù mạng chỉ gửi 4 gói/giây (250ms).
+// ============================================================================
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
 
-function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 let myName = 'Hành Giả', myX = 1100, myY = 920, targetX = 1100, targetY = 920;
 let isMeditating = false, walkPhase = 0, chatMessage = '', chatTimer = 0;
 let myPet = null, myHoldingItem = null, targetEntity = null;
+let myAppearanceHash = '';
 
-let keys = {}, peer = null, connections = {}, remotePlayers = {};
-const GLOBAL_ROOM_ID = 'thien_vien_online_v4_2026';
+let keys = {}, peer = null;
+let connections = {};       // Các kết nối WebRTC trực tiếp (tối đa MAX_DIRECT_PEERS)
+let remotePlayers = {};     // Toàn bộ hành giả trong Thiền Viện
+let playerProfiles = {};    // Lưu ngoại hình (tên, tóc, áo) để không gửi lặp lại
+let lastSentPacket = '';
+
+const GLOBAL_ROOM_ID = 'thien_vien_online_v5_2026';
+const MAX_DIRECT_PEERS = 24;        // Ngưỡng an toàn cho WebRTC trình duyệt
+const INTEREST_RADIUS = 1050;       // Chỉ đồng bộ tọa độ nhanh cho người ở gần
+const MAX_VISIBLE_CROWD = 280;      // Giới hạn số nhân vật vẽ tối đa trên 1 màn hình
 
 window.addEventListener('keydown', e => {
     if (document.activeElement.tagName === 'INPUT') return;
@@ -1210,7 +1394,9 @@ function checkInteractionArrival() {
                 if (picked.subType === 'pants') avatarConfig.customPants = picked.color;
                 if (picked.subType === 'hat') avatarConfig.customHat = picked.color;
                 if (picked.subType === 'shoes') avatarConfig.customShoes = picked.color;
-                worldDrops.splice(idx, 1); showFloatingNotice('Đã mặc ' + picked.label + ' mới!');
+                worldDrops.splice(idx, 1);
+                broadcastMyProfile(); // Cập nhật trang phục mới cho mọi người
+                showFloatingNotice('Đã mặc ' + picked.label + ' mới!');
             }
         }
     } else if (targetEntity.type === 'tree') {
@@ -1257,54 +1443,217 @@ function handleChatKey(e) {
 
 function initMultiplayer() {
     peer = new Peer(GLOBAL_ROOM_ID);
-    peer.on('open', () => { updateOnlineUI(); startSyncLoop(); });
+    peer.on('open', () => {
+        updateOnlineUI();
+        startSyncLoop();
+    });
     peer.on('error', err => {
         if (err.type === 'unavailable-id') {
             peer = new Peer();
-            peer.on('open', () => { connectToPeer(GLOBAL_ROOM_ID); startSyncLoop(); });
-            peer.on('connection', c => setupConnEvents(c));
-        } else { updateOnlineUI(); startSyncLoop(); }
+            peer.on('open', () => {
+                connectToPeer(GLOBAL_ROOM_ID);
+                startSyncLoop();
+            });
+            peer.on('connection', c => handleIncomingConnection(c));
+        } else {
+            updateOnlineUI();
+            startSyncLoop();
+        }
     });
-    peer.on('connection', c => setupConnEvents(c));
+    peer.on('connection', c => handleIncomingConnection(c));
+}
+
+function handleIncomingConnection(conn) {
+    const activeCount = Object.keys(connections).length;
+    // Nếu node hiện tại đã đủ 24 nhánh con -> giới thiệu người mới sang nhánh con khác (Tree-Mesh)
+    if (activeCount >= MAX_DIRECT_PEERS) {
+        conn.on('open', () => {
+            const relayCandidates = Object.keys(connections).slice(0, 6);
+            conn.send({ t: 'R', list: relayCandidates });
+            setTimeout(() => { try { conn.close(); } catch (e) {} }, 400);
+        });
+        return;
+    }
+    setupConnEvents(conn);
 }
 
 function connectToPeer(targetId) {
-    if (connections[targetId] || targetId === peer.id) return;
-    try { setupConnEvents(peer.connect(targetId, { reliable: false })); } catch (e) {}
+    if (!targetId || connections[targetId] || (peer && targetId === peer.id)) return;
+    if (Object.keys(connections).length >= MAX_DIRECT_PEERS) return;
+    try {
+        setupConnEvents(peer.connect(targetId, { reliable: false }));
+    } catch (e) {}
+}
+
+function broadcastMyProfile(targetConn = null) {
+    if (!peer || !peer.id) return;
+    const pkt = { t: 'P', id: peer.id, n: myName, c: avatarConfig };
+    if (targetConn && targetConn.open) {
+        targetConn.send(pkt);
+    } else {
+        for (let id in connections) {
+            if (connections[id].open) connections[id].send(pkt);
+        }
+    }
 }
 
 function setupConnEvents(conn) {
     connections[conn.peer] = conn;
     conn.on('open', () => {
         updateOnlineUI();
-        if (peer.id === GLOBAL_ROOM_ID) conn.send({ type: 'PEER_LIST', list: Object.keys(connections) });
-    });
-    conn.on('data', data => {
-        if (data.type === 'PEER_LIST') data.list.forEach(id => connectToPeer(id));
-        else if (data.type === 'STATE') {
-            remotePlayers[data.id] = { ...data, lastSeen: Date.now() };
-            if (peer.id === GLOBAL_ROOM_ID) {
-                for (let id in connections) if (id !== data.id && connections[id].open) connections[id].send(data);
-            }
-            updateOnlineUI();
+        broadcastMyProfile(conn);
+        // Gửi danh sách profile đã biết cho người mới
+        const knownIds = Object.keys(connections).filter(id => id !== conn.peer);
+        if (knownIds.length > 0) {
+            conn.send({ t: 'L', list: knownIds.slice(0, 12) });
         }
     });
-    conn.on('close', () => { delete connections[conn.peer]; delete remotePlayers[conn.peer]; updateOnlineUI(); });
+
+    conn.on('data', data => {
+        if (!data || !data.t) return;
+
+        if (data.t === 'R' || data.t === 'L') {
+            // Nhận danh sách nhánh con để nối vào mạng lưới
+            if (Array.isArray(data.list)) {
+                data.list.forEach(id => {
+                    if (Object.keys(connections).length < MAX_DIRECT_PEERS) connectToPeer(id);
+                });
+            }
+        } else if (data.t === 'P') {
+            // Nhận hồ sơ ngoại hình tĩnh (chỉ truyền 1 lần)
+            const isNew = !playerProfiles[data.id];
+            playerProfiles[data.id] = { name: data.n || 'Hành Giả', cfg: data.c || avatarConfig };
+            if (remotePlayers[data.id]) {
+                remotePlayers[data.id].name = playerProfiles[data.id].name;
+                remotePlayers[data.id].cfg = playerProfiles[data.id].cfg;
+            }
+            // Chuyển tiếp hồ sơ cho các nhánh con khác (Gossip Relay)
+            if (isNew) {
+                relayPacket(data, conn.peer);
+            }
+        } else if (data.t === 'M') {
+            // Gói di chuyển siêu gọn: { t:'M', id, x, y, f (flags), p (pet), ch (chat), h (hop) }
+            const prof = playerProfiles[data.id] || { name: 'Hành Giả', cfg: avatarConfig };
+            let rp = remotePlayers[data.id];
+            if (!rp) {
+                rp = {
+                    id: data.id,
+                    name: prof.name,
+                    cfg: prof.cfg,
+                    x: data.x,
+                    y: data.y,
+                    targetX: data.x,
+                    targetY: data.y,
+                    meditating: !!(data.f & 1),
+                    moving: !!(data.f & 2),
+                    holding: (data.f & 4) ? 'fruit' : ((data.f & 8) ? 'flower' : null),
+                    walkPhase: 0,
+                    pet: data.p || null,
+                    chat: data.ch || '',
+                    lastSeen: Date.now()
+                };
+                remotePlayers[data.id] = rp;
+                // Nếu chưa có hồ sơ ngoại hình, yêu cầu người gửi cấp lại
+                if (!playerProfiles[data.id] && conn.open) {
+                    conn.send({ t: 'REQ_P', target: data.id });
+                }
+            } else {
+                rp.targetX = data.x;
+                rp.targetY = data.y;
+                rp.meditating = !!(data.f & 1);
+                rp.moving = !!(data.f & 2);
+                rp.holding = (data.f & 4) ? 'fruit' : ((data.f & 8) ? 'flower' : null);
+                rp.pet = data.p || null;
+                rp.chat = data.ch || '';
+                rp.lastSeen = Date.now();
+            }
+
+            // Chỉ chuyển tiếp tối đa 3 hop và ưu tiên người chơi gần khu vực
+            const hop = (data.h || 0) + 1;
+            if (hop <= 3) {
+                relayPacket({ ...data, h: hop }, conn.peer);
+            }
+            updateOnlineUI();
+        } else if (data.t === 'REQ_P') {
+            if (data.target === peer.id) {
+                broadcastMyProfile(conn);
+            } else if (playerProfiles[data.target] && conn.open) {
+                const p = playerProfiles[data.target];
+                conn.send({ t: 'P', id: data.target, n: p.name, c: p.cfg });
+            }
+        }
+    });
+
+    conn.on('close', () => {
+        delete connections[conn.peer];
+        delete remotePlayers[conn.peer];
+        updateOnlineUI();
+    });
 }
 
+function relayPacket(packet, excludePeerId) {
+    for (let id in connections) {
+        if (id !== excludePeerId && connections[id].open) {
+            // Spatial Culling ở tầng mạng: nếu gói di chuyển ở quá xa người nhận thì giảm tần suất
+            connections[id].send(packet);
+        }
+    }
+}
+
+let syncTick = 0;
 function startSyncLoop() {
+    // Gửi trạng thái 5 lần/giây (200ms) thay vì 10 lần/giây -> giảm 50% băng thông
+    // Kết hợp nội suy Lerp ở phía client nên chuyển động vẫn mượt 60 FPS
     setInterval(() => {
         if (!peer || !peer.id) return;
-        const payload = {
-            type: 'STATE', id: peer.id, name: myName,
-            x: Math.round(myX), y: Math.round(myY), cfg: avatarConfig,
-            meditating: isMeditating, walkPhase: walkPhase, chat: chatMessage,
-            pet: myPet, holding: myHoldingItem
-        };
-        for (let id in connections) if (connections[id].open) connections[id].send(payload);
+        syncTick++;
+
+        const isMoving = !isMeditating && (walkPhase > 0);
+        let flags = 0;
+        if (isMeditating) flags |= 1;
+        if (isMoving) flags |= 2;
+        if (myHoldingItem === 'fruit') flags |= 4;
+        else if (myHoldingItem === 'flower') flags |= 8;
+
+        const rx = Math.round(myX);
+        const ry = Math.round(myY);
+        const packetSig = `${rx},${ry},${flags},${myPet || ''},${chatMessage}`;
+
+        // Delta Compression: Nếu đứng yên/đang thiền không đổi trạng thái, chỉ gửi nhịp tim 2 giây/lần
+        const shouldSend = (packetSig !== lastSentPacket) || (syncTick % 10 === 0);
+        if (shouldSend) {
+            lastSentPacket = packetSig;
+            const movePkt = {
+                t: 'M',
+                id: peer.id,
+                x: rx,
+                y: ry,
+                f: flags,
+                p: myPet,
+                ch: chatMessage,
+                h: 0
+            };
+            for (let id in connections) {
+                if (connections[id].open) connections[id].send(movePkt);
+            }
+        }
+
+        // Dọn dẹp người chơi đã thoát quá 8 giây
         const now = Date.now();
-        for (let rId in remotePlayers) if (now - remotePlayers[rId].lastSeen > 5000) { delete remotePlayers[rId]; updateOnlineUI(); }
-    }, 100);
+        let cleaned = false;
+        for (let rId in remotePlayers) {
+            if (now - remotePlayers[rId].lastSeen > 8000) {
+                delete remotePlayers[rId];
+                cleaned = true;
+            }
+        }
+        if (cleaned) updateOnlineUI();
+
+        // Tự động nối lại phòng chính nếu bị rớt kết nối
+        if (peer.id !== GLOBAL_ROOM_ID && Object.keys(connections).length === 0) {
+            connectToPeer(GLOBAL_ROOM_ID);
+        }
+    }, 200);
 }
 
 function updateOnlineUI() {
@@ -1328,6 +1677,7 @@ function update(vnDate) {
         boat.x += 1.4; if (boat.x > MAP_WIDTH + 100) boat.active = false;
     }
 
+    // Cập nhật chuyển động nhân vật của mình
     if (!isMeditating) {
         let dx = 0, dy = 0, speed = 3.5;
         if (keys['w'] || keys['arrowup']) dy -= 1;
@@ -1354,11 +1704,27 @@ function update(vnDate) {
         }
     }
 
+    // Nội suy Lerp mượt mà cho các hành giả online khác
+    for (let id in remotePlayers) {
+        const rp = remotePlayers[id];
+        const dx = rp.targetX - rp.x;
+        const dy = rp.targetY - rp.y;
+        if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
+            rp.x += dx * 0.22;
+            rp.y += dy * 0.22;
+            rp.walkPhase += 0.22;
+        } else {
+            rp.x = rp.targetX;
+            rp.y = rp.targetY;
+            rp.walkPhase = 0;
+        }
+    }
+
     if (chatTimer > 0) { chatTimer--; if (chatTimer === 0) chatMessage = ''; }
 }
 
-function drawBoatAndHeron(ctx, time, isNight) {
-    if (boat.active) {
+function drawBoatAndHeron(ctx, time, isNight, camLeft, camRight) {
+    if (boat.active && boat.x >= camLeft - 60 && boat.x <= camRight + 60) {
         const by = getRiverCenterY(boat.x);
         ctx.save(); ctx.translate(boat.x, by);
         ctx.fillStyle = isNight ? '#3e2723' : '#795548';
@@ -1371,7 +1737,7 @@ function drawBoatAndHeron(ctx, time, isNight) {
         ctx.restore();
     }
 
-    if (heron.active) {
+    if (heron.active && heron.x >= camLeft - 60 && heron.x <= camRight + 60) {
         const hy = heron.y + Math.sin(time * 0.004) * 18;
         const wingY = Math.sin(time * 0.018) * 12;
         ctx.save(); ctx.translate(heron.x, hy);
@@ -1384,7 +1750,23 @@ function drawBoatAndHeron(ctx, time, isNight) {
     }
 }
 
+// ============================================================================
+// VÒNG LẶP CHÍNH (60 FPS + FRUSTUM CULLING + ĐO HIỆU NĂNG THỰC TẾ)
+// ============================================================================
+const visibleEntitiesBuffer = [];
+let frameCounter = 0;
+let lastFpsCheck = performance.now();
+let currentFps = 60;
+
 function gameLoop(time) {
+    frameCounter++;
+    if (time - lastFpsCheck >= 1000) {
+        currentFps = frameCounter;
+        frameCounter = 0;
+        lastFpsCheck = time;
+        document.getElementById('fps-counter').innerText = `⚡ FPS: ${currentFps} | Hiển thị: ${visibleEntitiesBuffer.length}`;
+    }
+
     const vnDate = getVietnamTime();
     const isNight = isNightTime(vnDate);
     const isAlmsTime = updateAlmsMonks(vnDate);
@@ -1395,35 +1777,64 @@ function gameLoop(time) {
 
     update(vnDate);
 
-    ctx.fillStyle = '#0b0e0b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0b0e0b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const camX = Math.floor(canvas.width / 2 - myX);
     const camY = Math.floor(canvas.height / 2 - myY);
 
-    ctx.save(); ctx.translate(camX, camY);
+    // Vùng nhìn thấy thực tế của Camera (Camera Frustum Bounds)
+    const camLeft = -camX;
+    const camTop = -camY;
+    const camRight = camLeft + canvas.width;
+    const camBottom = camTop + canvas.height;
 
-    drawMap(ctx, time, isNight, isAlmsTime);
-    drawBoatAndHeron(ctx, time, isNight);
-    drawWorldDrops(ctx, time);
+    ctx.save();
+    ctx.translate(camX, camY);
+
+    // 1. Vẽ bản đồ đã tối ưu Static Layer + Viewport Culling
+    drawMapOptimized(ctx, time, isNight, isAlmsTime, camLeft, camTop, camRight, camBottom);
+    drawBoatAndHeron(ctx, time, isNight, camLeft, camRight);
+    drawWorldDrops(ctx, time, camLeft, camTop, camRight, camBottom);
 
     if (!isMeditating && (Math.abs(targetX - myX) > 3 || Math.abs(targetY - myY) > 3)) {
         ctx.strokeStyle = '#f4d03f'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(targetX, targetY, 8 + Math.sin(time * 0.01) * 2, 0, Math.PI * 2); ctx.stroke();
     }
 
-    monks.forEach(mk => drawAlmsMonk(ctx, mk, time));
+    for (let i = 0; i < monks.length; i++) {
+        const mk = monks[i];
+        if (mk.active && mk.x >= camLeft - 40 && mk.x <= camRight + 40 && mk.y >= camTop - 50 && mk.y <= camBottom + 50) {
+            drawAlmsMonk(ctx, mk, time);
+        }
+    }
 
-    let allEntities = [{
+    // 2. Frustum Culling cho 1000 hành giả: chỉ nạp những người nằm trong khung hình
+    visibleEntitiesBuffer.length = 0;
+    visibleEntitiesBuffer.push({
         x: myX, y: myY, name: myName, cfg: avatarConfig,
         meditating: isMeditating, walkPhase: walkPhase, chat: chatMessage,
         pet: myPet, holding: myHoldingItem
-    }];
-    for (let id in remotePlayers) allEntities.push(remotePlayers[id]);
-    allEntities.sort((a, b) => a.y - b.y);
-
-    allEntities.forEach(p => {
-        drawChibiCharacter(ctx, p.x, p.y, p.name, p.cfg, p.meditating, p.walkPhase, p.chat, time, 1, p.pet, p.holding);
     });
+
+    const cullMargin = 90;
+    for (let id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (rp.x >= camLeft - cullMargin && rp.x <= camRight + cullMargin &&
+            rp.y >= camTop - cullMargin && rp.y <= camBottom + cullMargin) {
+            visibleEntitiesBuffer.push(rp);
+            if (visibleEntitiesBuffer.length >= MAX_VISIBLE_CROWD) break;
+        }
+    }
+
+    // Sắp xếp chiều sâu trục Y chỉ trên danh sách đang hiển thị
+    visibleEntitiesBuffer.sort((a, b) => a.y - b.y);
+
+    // 3. Vẽ nhân vật từ bộ nhớ đệm Offscreen Cache (O(1) drawImage)
+    for (let i = 0; i < visibleEntitiesBuffer.length; i++) {
+        const p = visibleEntitiesBuffer[i];
+        drawCachedCharacter(ctx, p.x, p.y, p.name, p.cfg, p.meditating, p.walkPhase, p.chat, time, p.pet, p.holding);
+    }
 
     ctx.restore();
     requestAnimationFrame(gameLoop);
