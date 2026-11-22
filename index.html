@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản Online - V6.2 (9:16 RotMG Pixel)</title>
+    <title>Thiền Viện Tối Giản Online - V6.3 (9:16 RotMG Pixel)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -295,7 +295,7 @@ function startMusicLoop() {
     if (musicInterval) return;
     let step = 0;
     musicInterval = setInterval(() => {
-        if (!isMusicOn) return;
+        if (!isMusicOn || document.hidden) return;
         const note = PENTATONIC_NOTES[(step * 2 + (step % 3)) % PENTATONIC_NOTES.length];
         playSoftBellNote(note, 2.6);
         step = (step + 1) % 64;
@@ -322,6 +322,12 @@ function toggleMusic() {
         btn.classList.add('muted');
     }
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && isMusicOn && audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
+});
 
 let authMode = 'guest';
 const SECRET_POOL = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
@@ -355,12 +361,12 @@ function switchTab(mode) {
 }
 
 function loadDB() {
-    try { return JSON.parse(localStorage.getItem('thienvien_v62_db') || '{}'); }
+    try { return JSON.parse(localStorage.getItem('thienvien_v63_db') || '{}'); }
     catch (_) { return {}; }
 }
 
 function saveDB(db) {
-    try { localStorage.setItem('thienvien_v62_db', JSON.stringify(db)); }
+    try { localStorage.setItem('thienvien_v63_db', JSON.stringify(db)); }
     catch (_) {}
 }
 
@@ -523,8 +529,8 @@ const HAIR_LIST = [
     { id: 4, name: 'Đầu Trọc' }
 ];
 const OUTFIT_LIST = [
-    { id: 0, name: 'Áo Lam', main: '#46829e', trim: '#6b5344', pants: '#233b46' },
-    { id: 1, name: 'Áo Nâu', main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
+    { id: 0, name: 'Áo Lam',  main: '#46829e', trim: '#6b5344', pants: '#233b46' },
+    { id: 1, name: 'Áo Nâu',  main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
     { id: 2, name: 'Áo Vàng', main: '#d89b3c', trim: '#8c5819', pants: '#37474f' },
     { id: 3, name: 'Áo Hồng', main: '#c96b88', trim: '#7d3c50', pants: '#2d3748' }
 ];
@@ -539,12 +545,13 @@ let cfg = {
 };
 
 function buildCharacterMatrix(c, poseState) {
+    const isMed = (poseState === 3);
     const r0 = '.HHHHHHHHH.';
     const r1 = 'HHhHHHHhHHH';
     const r2 = 'HHhHHHHhHHH';
     const r3 = 'HSSSSSSSSSH';
-    const r4 = 'SS.EE.EE.SS';
-    const r5 = 'SS.EE.EE.SS';
+    const r4 = isMed ? 'SS.ll.ll.SS' : 'SS.EE.EE.SS';
+    const r5 = isMed ? 'SS..N...NSS' : 'SS.EE.EE.SS';
     const r6 = '.SS.MMM.SS.';
     const r7 = '....SSS....';
     const r8 = '..TTCCCCTT.';
@@ -565,7 +572,7 @@ function buildCharacterMatrix(c, poseState) {
         r13 = '..PP.PPPP..';
         r14 = '..PP..PPP..';
         r15 = '.FF....FF..';
-    } else if (poseState === 3) {
+    } else if (isMed) {
         return [
             r0, r1, r2, r3, r4, r5, r6,
             r7,
@@ -613,7 +620,9 @@ function buildCharacterSprite(c, poseState) {
         H: c.hairColor || '#1a2c2e',
         h: c.hairShade || '#364d47',
         E: '#141716',
-        M: '#f01e56',
+        l: '#2b2420',
+        N: '#9e5a42',
+        M: '#e85d75',
         C: out.main,
         T: out.trim,
         P: out.pants,
@@ -621,6 +630,47 @@ function buildCharacterSprite(c, poseState) {
     };
     const grid = buildCharacterMatrix(c, poseState);
     return bakeRotmgSprite(grid, palette, 5, true);
+}
+
+function drawHeadHalo(ctx, cx, cy, time) {
+    const pulse = 0.88 + Math.sin(time * 0.004) * 0.12;
+    const outerR = 30 * pulse;
+    const innerR = 21 * pulse;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    const glow = ctx.createRadialGradient(0, 0, innerR * 0.4, 0, 0, outerR + 10);
+    glow.addColorStop(0, 'rgba(255, 245, 157, 0.35)');
+    glow.addColorStop(0.65, 'rgba(255, 202, 40, 0.25)');
+    glow.addColorStop(1, 'rgba(255, 179, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, outerR + 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffca28';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, 0, outerR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fff59d';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, innerR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2 + time * 0.0012;
+        const r = outerR + 5 + Math.sin(time * 0.006 + i) * 2.5;
+        const sx = Math.round(Math.cos(ang) * r);
+        const sy = Math.round(Math.sin(ang) * r);
+        ctx.fillStyle = (i % 2 === 0) ? '#fff59d' : '#ffb300';
+        ctx.fillRect(sx - 2, sy - 2, 4, 4);
+    }
+
+    ctx.restore();
 }
 
 function initCreatorUI() {
@@ -937,20 +987,14 @@ function drawEntity(ctx, x, y, name, c, med, walk, chat, time) {
     const rx = Math.round(x);
     const ry = Math.round(y);
 
-    if (med) {
-        const pulse = 0.45 + Math.sin(time * 0.004) * 0.2;
-        const rad = 36 + Math.sin(time * 0.003) * 3;
-        const grad = ctx.createRadialGradient(rx, ry - 12, 4, rx, ry - 12, rad);
-        grad.addColorStop(0, `rgba(255, 245, 157, ${pulse})`);
-        grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(rx, ry - 12, rad, 0, Math.PI * 2); ctx.fill();
-    }
-
     const frames = getCharacterFrames(name, c);
     let idx = 0;
     if (med) idx = 3;
     else if (walk > 0.01) idx = (Math.sin(walk) >= 0) ? 1 : 2;
+
+    if (med) {
+        drawHeadHalo(ctx, rx, ry - 44, time);
+    }
 
     ctx.drawImage(frames[idx], rx - 90, ry - 94);
 
@@ -1049,16 +1093,29 @@ function canMove(nx, ny) {
     return true;
 }
 
-const ROOM_ID = 'thienvien_v62_room_2026';
+const ROOM_ID = 'thienvien_v63_room_2026';
 const MAX_PEERS = 24;
 const MAX_VISIBLE = 280;
 let peer = null;
 const conns = {};
 const remotes = {};
 const profiles = {};
+const seenMsgIds = new Map();
 let syncTimer = null;
 let lastSig = '';
 let tickCount = 0;
+let msgCounter = 0;
+
+function markAndCheckSeen(msgId) {
+    if (!msgId) return false;
+    if (seenMsgIds.has(msgId)) return true;
+    seenMsgIds.set(msgId, Date.now());
+    if (seenMsgIds.size > 1500) {
+        const oldestKey = seenMsgIds.keys().next().value;
+        seenMsgIds.delete(oldestKey);
+    }
+    return false;
+}
 
 function createPeerInstance(customId = null) {
     const iceCfg = {
@@ -1132,6 +1189,7 @@ function bindConn(conn) {
             }
             if (first) relay(d, conn.peer);
         } else if (d.t === 'M') {
+            if (markAndCheckSeen(d.mid)) return;
             const pr = profiles[d.id] || { n: 'Hành Giả', c: cfg };
             let rp = remotes[d.id];
             if (!rp) {
@@ -1189,7 +1247,8 @@ function beginSync() {
         const sig = `${rx},${ry},${flags},${chatMsg}`;
         if (sig !== lastSig || tickCount % 5 === 0) {
             lastSig = sig;
-            const pkt = { t: 'M', id: peer.id, x: rx, y: ry, f: flags, ch: chatMsg, h: 0 };
+            msgCounter = (msgCounter + 1) % 1000000;
+            const pkt = { t: 'M', mid: `${peer.id}_${msgCounter}`, id: peer.id, x: rx, y: ry, f: flags, ch: chatMsg, h: 0 };
             for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
         }
 
@@ -1233,9 +1292,9 @@ function stepSimulation() {
         } else {
             const dx = targetX - myX, dy = targetY - myY, dist = Math.hypot(dx, dy);
             if (dist > spd) {
-                const mx = (dx / dist) * spd, my = (dy / dist) * spd;
-                if (canMove(myX + mx, myY)) myX += mx;
-                if (canMove(myX, myY + my)) myY += my;
+                const stepX = (dx / dist) * spd, stepY = (dy / dist) * spd;
+                if (canMove(myX + stepX, myY)) myX += stepX;
+                if (canMove(myX, myY + stepY)) myY += stepY;
                 walkPhase += 0.24;
             } else {
                 walkPhase = 0;
@@ -1262,8 +1321,6 @@ const renderList = [];
 let fpsFrames = 0, fpsLast = performance.now(), fpsVal = 60;
 
 function loop(time) {
-    syncCanvasResolution();
-
     fpsFrames++;
     if (time - fpsLast >= 1000) {
         fpsVal = fpsFrames;
