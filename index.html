@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản Online - V6.3 (9:16 RotMG Pixel)</title>
+    <title>Thiền Viện Tối Giản - V7.1</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -13,424 +13,225 @@
             font-family: 'Courier New', Courier, monospace; color: #f4f6f2;
             display: flex; justify-content: center; align-items: center;
         }
-
-        /* Khung 9:16 chuẩn dọc điện thoại, tự động co giãn theo tỉ lệ trên màn hình lớn */
         #game-frame {
             position: relative;
             width: min(100vw, calc(100dvh * 9 / 16));
             height: min(100dvh, calc(100vw * 16 / 9));
-            background: #141a13;
-            overflow: hidden;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(244, 208, 63, 0.22);
+            background: #141a13; overflow: hidden;
+            box-shadow: 0 0 36px rgba(0,0,0,0.9);
         }
-
         #gameCanvas {
             width: 100%; height: 100%; display: block;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
+            image-rendering: pixelated; image-rendering: crisp-edges;
             touch-action: none;
         }
-
-        /* Tooltip mini khi rê chuột / chạm / focus vào icon */
         #ui-tooltip {
             position: fixed; z-index: 60; pointer-events: none;
-            background: rgba(12, 16, 12, 0.95); border: 1px solid #f4d03f;
-            color: #ffeb3b; padding: 5px 9px; border-radius: 6px;
-            font-size: 11px; line-height: 1.35; white-space: nowrap;
-            display: none; box-shadow: 0 6px 18px rgba(0,0,0,0.75);
+            background: rgba(12,16,12,0.95); border: 1px solid #f4d03f;
+            color: #ffeb3b; padding: 4px 8px; border-radius: 5px;
+            font-size: 11px; display: none; white-space: nowrap;
         }
-
-        /* HUD gọn nhẹ góc trái trên */
         #hud-mini {
             position: absolute; top: 8px; left: 8px; z-index: 15;
-            background: rgba(10, 14, 10, 0.78); border: 1px solid rgba(255,255,255,0.16);
-            border-radius: 7px; padding: 6px 9px; font-size: 10px; line-height: 1.45;
+            background: rgba(10,14,10,0.75); border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 6px; padding: 5px 8px; font-size: 10px; line-height: 1.4;
             pointer-events: none;
         }
-
-        /* Cụm nút icon góc phải trên */
         #icon-bar-top {
             position: absolute; top: 8px; right: 8px; z-index: 20;
             display: flex; gap: 6px;
         }
         .icon-btn {
             width: 34px; height: 34px; border-radius: 8px;
-            background: rgba(18, 24, 18, 0.88); border: 1px solid rgba(244, 208, 63, 0.65);
+            background: rgba(18,24,18,0.88); border: 1px solid rgba(244,208,63,0.6);
             color: #f4d03f; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            transition: transform 0.12s, background 0.15s;
         }
-        .icon-btn:hover { background: rgba(42, 56, 40, 0.95); transform: translateY(-1px); }
         .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
-        .icon-btn.muted { opacity: 0.65; border-color: rgba(255,255,255,0.25); color: #bbb; }
-
-        /* Thanh chat gọn ở đáy khung 9:16 */
+        .icon-btn.muted { opacity: 0.6; color: #bbb; border-color: rgba(255,255,255,0.2); }
         #chat-dock {
             position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
             display: none; gap: 6px; align-items: center;
-            background: rgba(12, 16, 12, 0.86); border: 1px solid rgba(255,255,255,0.2);
-            padding: 5px; border-radius: 9px;
+            background: rgba(12,16,12,0.85); border: 1px solid rgba(255,255,255,0.18);
+            padding: 5px; border-radius: 8px;
         }
         #chat-input {
             flex: 1; min-width: 0; background: #0c100c; border: 1px solid #485644;
-            color: #fff; padding: 6px 9px; border-radius: 6px;
+            color: #fff; padding: 6px 8px; border-radius: 6px;
             font-family: inherit; font-size: 12px; outline: none;
         }
-        #chat-input:focus { border-color: #f4d03f; }
-
-        /* Màn hình vào game / tạo nhân vật gọn trong khung 9:16 */
         #login-screen {
-            position: absolute; inset: 0; background: rgba(10, 14, 10, 0.96);
+            position: absolute; inset: 0; background: rgba(10,14,10,0.96);
             display: flex; justify-content: center; align-items: center; z-index: 30; padding: 10px;
         }
         #login-box {
-            width: 100%; max-height: 100%; overflow-y: auto;
-            background: #1a2118; border: 2px solid #5a6b52; border-radius: 10px;
-            padding: 14px; box-shadow: 0 14px 36px rgba(0,0,0,0.85);
+            width: 100%; background: #1a2118; border: 2px solid #5a6b52;
+            border-radius: 10px; padding: 14px;
         }
-        .title-txt {
-            margin: 0 0 10px 0; text-align: center; color: #f4d03f;
-            font-size: 15px; letter-spacing: 1px;
-        }
-        .tab-bar { display: flex; gap: 5px; margin-bottom: 10px; }
-        .tab-btn {
-            flex: 1; padding: 6px 4px; background: #242e22; border: 1px solid #4e5e48;
-            color: #c8d0c4; font-family: inherit; font-size: 11px; font-weight: bold;
-            border-radius: 6px; cursor: pointer;
-        }
-        .tab-btn.active { background: #d4af37; color: #111; border-color: #fff; }
-
-        .creator-top { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .title-txt { margin: 0 0 10px; text-align: center; color: #f4d03f; font-size: 15px; }
+        .creator-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
         .preview-box {
-            width: 92px; height: 108px; background: #e8e6df;
+            width: 84px; height: 96px; background: #e8e6df;
             border: 2px solid #75876b; border-radius: 8px;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         #previewCanvas { image-rendering: pixelated; image-rendering: crisp-edges; }
-        .creator-opts { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-        .opt-label { font-size: 10px; color: #b8c4b2; margin-bottom: 2px; display: block; }
-        .btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
+        .opt-label { font-size: 10px; color: #b8c4b2; margin-bottom: 3px; display: block; }
+        .btn-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
         .mini-btn {
             background: #283326; border: 1px solid #4e5e48; color: #e0e6dc;
-            padding: 3px 6px; border-radius: 4px; font-family: inherit; font-size: 10px; cursor: pointer;
+            padding: 4px 7px; border-radius: 4px; font-family: inherit; font-size: 10px; cursor: pointer;
         }
-        .mini-btn.active { background: #d4af37; color: #111; font-weight: bold; border-color: #fff; }
-        .swatch {
-            width: 18px; height: 18px; border-radius: 4px; border: 2px solid #3c4639; cursor: pointer;
-        }
-        .swatch.active { border-color: #fff; transform: scale(1.1); }
-
-        .field-group { margin-bottom: 8px; }
-        input[type="text"], input[type="password"] {
+        .mini-btn.active { background: #d4af37; color: #111; font-weight: bold; }
+        .swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #3c4639; cursor: pointer; }
+        .swatch.active { border-color: #fff; }
+        input[type="text"] {
             width: 100%; background: #10140f; border: 1px solid #4e5e48;
-            color: #fff; padding: 7px 9px; border-radius: 6px;
-            font-family: inherit; font-size: 12px; outline: none;
+            color: #fff; padding: 7px 9px; border-radius: 6px; font-family: inherit; font-size: 12px; outline: none;
         }
-        input:focus { border-color: #f4d03f; }
-        .secret-row { display: flex; gap: 5px; }
         .go-btn {
             width: 100%; background: #467832; border: 2px solid #79b85c; color: #fff;
             padding: 10px; border-radius: 7px; font-family: inherit; font-size: 13px;
-            font-weight: bold; cursor: pointer; margin-top: 4px;
+            font-weight: bold; cursor: pointer; margin-top: 10px;
         }
-        .go-btn:hover { background: #548f3d; }
-        .err-txt { color: #ff7675; font-size: 11px; min-height: 15px; margin-top: 4px; }
     </style>
 </head>
 <body>
     <div id="ui-tooltip"></div>
-
     <div id="game-frame">
         <div id="hud-mini">
             <div id="hud-clock" style="color:#f4d03f;font-weight:bold;">00:00</div>
-            <div id="hud-online" style="color:#81c784;">1</div>
-            <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
+            <div id="hud-online" style="color:#81c784;">● 1</div>
+            <div id="hud-fps" style="color:#90caf9;">30 FPS</div>
         </div>
-
         <div id="icon-bar-top">
-            <button id="btn-meditate" class="icon-btn"
-                data-tip="Ngồi thiền [Space]"
-                onpointerenter="showTip(this)" onpointerleave="hideTip()" onfocus="showTip(this)" onblur="hideTip()"
-                onclick="toggleMeditate()">🧘</button>
-            <button id="btn-music" class="icon-btn muted"
-                data-tip="Nhạc thiền [M]"
-                onpointerenter="showTip(this)" onpointerleave="hideTip()" onfocus="showTip(this)" onblur="hideTip()"
-                onclick="toggleMusic()">🎵</button>
+            <button id="btn-meditate" class="icon-btn" data-tip="Thiền [Space]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMeditate()">🧘</button>
+            <button id="btn-music" class="icon-btn muted" data-tip="Nhạc [M]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMusic()">🎵</button>
         </div>
 
         <div id="login-screen">
             <div id="login-box">
-                <h2 class="title-txt">THIỀN VIỆN TỐI GIẢN</h2>
-                <div class="tab-bar">
-                    <button class="tab-btn active" id="tab-guest" onclick="switchTab('guest')">Vào Nhanh</button>
-                    <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Tạo TK</button>
-                    <button class="tab-btn" id="tab-login" onclick="switchTab('login')">Đăng Nhập</button>
-                </div>
-
-                <div id="creator-panel">
-                    <div class="creator-top">
-                        <div class="preview-box">
-                            <canvas id="previewCanvas" width="84" height="96"></canvas>
+                <h2 class="title-txt">THIỀN VIỆN V7.1</h2>
+                <div class="creator-row">
+                    <div class="preview-box">
+                        <canvas id="previewCanvas" width="76" height="86"></canvas>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <span class="opt-label">Giới tính</span>
+                        <div class="btn-row" id="gender-row">
+                            <button class="mini-btn active" onclick="setGender('male', this)">Nam</button>
+                            <button class="mini-btn" onclick="setGender('female', this)">Nữ</button>
                         </div>
-                        <div class="creator-opts">
-                            <div>
-                                <span class="opt-label">Giới tính (phom chuẩn)</span>
-                                <div class="btn-row" id="gender-row">
-                                    <button class="mini-btn active" onclick="setGender('male', this)">Nam</button>
-                                    <button class="mini-btn" onclick="setGender('female', this)">Nữ</button>
-                                </div>
-                            </div>
-                            <div>
-                                <span class="opt-label">Da</span>
-                                <div class="btn-row" id="skin-row"></div>
-                            </div>
-                            <div>
-                                <span class="opt-label">Kiểu tóc (5 kiểu)</span>
-                                <div class="btn-row" id="hair-row"></div>
-                            </div>
-                            <div>
-                                <span class="opt-label">Áo</span>
-                                <div class="btn-row" id="outfit-row"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <span class="opt-label">Tên nhân vật</span>
-                        <input type="text" id="name-input" maxlength="14" value="Hành Giả" placeholder="Tên nhân vật">
+                        <span class="opt-label">Da</span>
+                        <div class="btn-row" id="skin-row"></div>
                     </div>
                 </div>
-
-                <div id="register-panel" style="display:none;">
-                    <div class="field-group">
-                        <span class="opt-label">ID tài khoản</span>
-                        <input type="text" id="reg-id" maxlength="20" placeholder="ID tài khoản">
-                    </div>
-                    <div class="field-group">
-                        <span class="opt-label">Mật khẩu</span>
-                        <input type="password" id="reg-pass" maxlength="24" placeholder="Mật khẩu">
-                    </div>
-                    <div class="field-group">
-                        <span class="opt-label">Mã bảo mật 23 ký tự</span>
-                        <div class="secret-row">
-                            <input type="text" id="reg-secret" readonly>
-                            <button type="button" class="mini-btn" onclick="copySecret()">Copy</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="login-panel" style="display:none;">
-                    <div class="field-group">
-                        <span class="opt-label">ID tài khoản</span>
-                        <input type="text" id="login-id" placeholder="ID tài khoản">
-                    </div>
-                    <div class="field-group">
-                        <span class="opt-label">Mật khẩu hoặc mã 23 ký tự</span>
-                        <input type="text" id="login-cred" placeholder="Mật khẩu / mã 23 ký tự">
-                    </div>
-                </div>
-
-                <div class="err-txt" id="auth-err"></div>
-                <button class="go-btn" id="go-btn" onclick="submitAuth()">VÀO GAME</button>
+                <span class="opt-label">Kiểu tóc</span>
+                <div class="btn-row" id="hair-row"></div>
+                <span class="opt-label">Áo</span>
+                <div class="btn-row" id="outfit-row"></div>
+                <span class="opt-label">Tên</span>
+                <input type="text" id="name-input" maxlength="14" value="Hành Giả">
+                <button class="go-btn" onclick="enterGame()">VÀO NGAY</button>
             </div>
         </div>
 
         <canvas id="gameCanvas"></canvas>
 
         <div id="chat-dock">
-            <input type="text" id="chat-input" maxlength="55" placeholder="Chat..." onkeydown="onChatKey(event)">
-            <button class="icon-btn"
-                data-tip="Gửi [Enter]"
-                onpointerenter="showTip(this)" onpointerleave="hideTip()" onfocus="showTip(this)" onblur="hideTip()"
-                onclick="sendChatFromInput()">💬</button>
+            <input type="text" id="chat-input" maxlength="50" placeholder="Chat..." onkeydown="onChatKey(event)">
+            <button class="icon-btn" data-tip="Gửi [Enter]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="sendChat()">💬</button>
         </div>
     </div>
 
 <script>
+// --- TOOLTIP ---
 const tipEl = document.getElementById('ui-tooltip');
-let tipAutoHideTimer = null;
+let tipTimer = null;
 function showTip(el) {
-    const txt = el.getAttribute('data-tip');
-    if (!txt) return;
-    tipEl.textContent = txt;
+    const t = el.getAttribute('data-tip');
+    if (!t) return;
+    tipEl.textContent = t;
     tipEl.style.display = 'block';
     const r = el.getBoundingClientRect();
-    const x = Math.min(window.innerWidth - tipEl.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tipEl.offsetWidth / 2));
-    const y = (r.bottom + 6 + tipEl.offsetHeight < window.innerHeight) ? (r.bottom + 6) : (r.top - tipEl.offsetHeight - 6);
-    tipEl.style.left = Math.round(x) + 'px';
-    tipEl.style.top = Math.round(y) + 'px';
-    if (tipAutoHideTimer) clearTimeout(tipAutoHideTimer);
-    tipAutoHideTimer = setTimeout(hideTip, 2200);
+    tipEl.style.left = Math.min(window.innerWidth - tipEl.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tipEl.offsetWidth / 2)) + 'px';
+    tipEl.style.top = Math.max(8, r.bottom + 6) + 'px';
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(hideTip, 2000);
 }
-function hideTip() {
-    tipEl.style.display = 'none';
-}
-document.addEventListener('pointerdown', e => {
-    if (!e.target.closest || !e.target.closest('.icon-btn')) hideTip();
-}, { passive: true });
+function hideTip() { tipEl.style.display = 'none'; }
 
-let audioCtx = null;
-let musicInterval = null;
-let isMusicOn = false;
-const PENTATONIC_NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
-
-function playSoftBellNote(freq, durationSec = 2.4) {
-    if (!audioCtx || audioCtx.state !== 'running') return;
-    const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now);
-
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.12);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(now);
-    osc.stop(now + durationSec + 0.05);
-}
-
-function startMusicLoop() {
-    if (musicInterval) return;
-    let step = 0;
-    musicInterval = setInterval(() => {
-        if (!isMusicOn || document.hidden) return;
-        const note = PENTATONIC_NOTES[(step * 2 + (step % 3)) % PENTATONIC_NOTES.length];
-        playSoftBellNote(note, 2.6);
-        step = (step + 1) % 64;
-    }, 2200);
-}
-
+// --- NHẠC SIÊU NHẸ (TỰ NGỪNG KHI ẨN TAB) ---
+let audioCtx = null, isMusicOn = false, musicTimer = null;
+const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00];
 function toggleMusic() {
     const btn = document.getElementById('btn-music');
-    if (!isMusicOn) {
+    isMusicOn = !isMusicOn;
+    btn.classList.toggle('active', isMusicOn);
+    btn.classList.toggle('muted', !isMusicOn);
+    if (isMusicOn) {
         if (!audioCtx) {
             const AC = window.AudioContext || window.webkitAudioContext;
             if (AC) audioCtx = new AC();
         }
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume().catch(() => {});
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        if (!musicTimer) {
+            let i = 0;
+            musicTimer = setInterval(() => {
+                if (!isMusicOn || document.hidden || !audioCtx || audioCtx.state !== 'running') return;
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(NOTES[i++ % NOTES.length], now);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.025, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 2.05);
+            }, 2600);
         }
-        isMusicOn = true;
-        startMusicLoop();
-        btn.classList.remove('muted');
-        btn.classList.add('active');
-    } else {
-        isMusicOn = false;
-        btn.classList.remove('active');
-        btn.classList.add('muted');
     }
 }
 
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && isMusicOn && audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-    }
-});
+// --- NHÂN VẬT LƯỚI 20x24 CHUẨN TỪNG HÀNG ---
+const SKIN_LIST = ['#f4a27a', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
+const HAIR_LIST = ['Mái Ngang', 'Rẽ Ngôi', 'Búi Đỉnh', 'Tóc Dài', 'Đầu Trọc'];
+const OUTFIT_LIST = [
+    { name: 'Áo Lam', main: '#46829e', trim: '#6b5344', pants: '#233b46' },
+    { name: 'Áo Nâu', main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
+    { name: 'Áo Vàng', main: '#d89b3c', trim: '#8c5819', pants: '#37474f' },
+    { name: 'Áo Hồng', main: '#c96b88', trim: '#7d3c50', pants: '#2d3748' }
+];
+let cfg = { gender: 'male', skin: SKIN_LIST[0], hairStyle: 0, hairColor: '#1e292e', hairShade: '#3d545c', outfitId: 0 };
 
-let authMode = 'guest';
-const SECRET_POOL = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
-
-function genSecret23() {
-    let s = '';
-    for (let i = 0; i < 23; i++) {
-        s += SECRET_POOL.charAt(Math.floor(Math.random() * SECRET_POOL.length));
-    }
-    return s;
+function setRow(row, rows) {
+    return rows.map(s => s.length === 20 ? s : s.padEnd(20, '.').slice(0, 20));
 }
 
-function copySecret() {
-    const inp = document.getElementById('reg-secret');
-    inp.select();
-    if (navigator.clipboard) navigator.clipboard.writeText(inp.value).catch(() => {});
-}
-
-function switchTab(mode) {
-    authMode = mode;
-    document.getElementById('auth-err').textContent = '';
-    ['guest', 'register', 'login'].forEach(m => {
-        document.getElementById('tab-' + m).classList.toggle('active', m === mode);
-    });
-    document.getElementById('creator-panel').style.display = (mode === 'login') ? 'none' : 'block';
-    document.getElementById('register-panel').style.display = (mode === 'register') ? 'block' : 'none';
-    document.getElementById('login-panel').style.display = (mode === 'login') ? 'block' : 'none';
-    if (mode === 'register') {
-        document.getElementById('reg-secret').value = genSecret23();
-    }
-}
-
-function loadDB() {
-    try { return JSON.parse(localStorage.getItem('thienvien_v63_db') || '{}'); }
-    catch (_) { return {}; }
-}
-
-function saveDB(db) {
-    try { localStorage.setItem('thienvien_v63_db', JSON.stringify(db)); }
-    catch (_) {}
-}
-
-function submitAuth() {
-    const err = document.getElementById('auth-err');
-    err.textContent = '';
-    const db = loadDB();
-
-    if (authMode === 'guest') {
-        myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
-        enterGame();
-    } else if (authMode === 'register') {
-        const id = (document.getElementById('reg-id').value || '').trim();
-        const pass = (document.getElementById('reg-pass').value || '').trim();
-        const secret = (document.getElementById('reg-secret').value || '').trim();
-        const cname = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
-        if (!id || !pass) { err.textContent = 'Nhập ID và mật khẩu.'; return; }
-        if (db[id]) { err.textContent = 'ID đã tồn tại.'; return; }
-        db[id] = { id, pass, secret, name: cname, cfg: JSON.parse(JSON.stringify(cfg)) };
-        saveDB(db);
-        myName = cname;
-        enterGame();
-    } else {
-        const id = (document.getElementById('login-id').value || '').trim();
-        const cred = (document.getElementById('login-cred').value || '').trim();
-        if (!id || !cred) { err.textContent = 'Nhập ID và mật khẩu/mã.'; return; }
-        const acc = db[id];
-        if (!acc || (acc.pass !== cred && acc.secret !== cred)) {
-            err.textContent = 'Thông tin không khớp.'; return;
-        }
-        myName = acc.name;
-        cfg = Object.assign({}, cfg, acc.cfg);
-        enterGame();
-    }
-}
-
-function enterGame() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('chat-dock').style.display = 'flex';
-    initP2P();
-}
-
-function bakeRotmgSprite(grid, palette, pixelSize = 5, addOutline = true) {
-    const h = grid.length;
-    const w = grid[0].length;
-    const pad = addOutline ? 1 : 0;
+function bakePixelMatrix(grid, pal, ps = 3, outline = true) {
+    const clean = setRow(grid, grid);
+    const h = clean.length, w = 20, pad = outline ? 1 : 0;
     const c = document.createElement('canvas');
-    c.width = (w + pad * 2) * pixelSize;
-    c.height = (h + pad * 2) * pixelSize;
+    c.width = (w + pad * 2) * ps;
+    c.height = (h + pad * 2) * ps;
     const cx = c.getContext('2d');
     cx.imageSmoothingEnabled = false;
 
-    if (addOutline) {
+    if (outline) {
         cx.fillStyle = '#0c0e0c';
         for (let r = 0; r < h; r++) {
             for (let col = 0; col < w; col++) {
-                const ch = grid[r][col];
-                if (ch !== '.' && palette[ch]) {
-                    const gx = col + pad;
-                    const gy = r + pad;
-                    cx.fillRect((gx - 1) * pixelSize, gy * pixelSize, pixelSize, pixelSize);
-                    cx.fillRect((gx + 1) * pixelSize, gy * pixelSize, pixelSize, pixelSize);
-                    cx.fillRect(gx * pixelSize, (gy - 1) * pixelSize, pixelSize, pixelSize);
-                    cx.fillRect(gx * pixelSize, (gy + 1) * pixelSize, pixelSize, pixelSize);
+                const ch = clean[r][col];
+                if (ch !== '.' && pal[ch]) {
+                    const gx = (col + pad) * ps, gy = (r + pad) * ps;
+                    cx.fillRect(gx - ps, gy, ps, ps);
+                    cx.fillRect(gx + ps, gy, ps, ps);
+                    cx.fillRect(gx, gy - ps, ps, ps);
+                    cx.fillRect(gx, gy + ps, ps, ps);
                 }
             }
         }
@@ -438,291 +239,152 @@ function bakeRotmgSprite(grid, palette, pixelSize = 5, addOutline = true) {
 
     for (let r = 0; r < h; r++) {
         for (let col = 0; col < w; col++) {
-            const ch = grid[r][col];
-            if (ch !== '.' && palette[ch]) {
-                cx.fillStyle = palette[ch];
-                cx.fillRect((col + pad) * pixelSize, (r + pad) * pixelSize, pixelSize, pixelSize);
+            const ch = clean[r][col];
+            if (ch !== '.' && pal[ch]) {
+                cx.fillStyle = pal[ch];
+                cx.fillRect((col + pad) * ps, (r + pad) * ps, ps, ps);
             }
         }
     }
     return c;
 }
 
-const ENV_SPR = {};
-function initEnvSprites() {
-    ENV_SPR.peach = bakeRotmgSprite([
-        '...PPPP.....',
-        '..PPllPP....',
-        '.PPllllPP...',
-        '.PllPPllPP..',
-        'PPllPPlllPP.',
-        'PlllPPllllP.',
-        '.PPllllPPP..',
-        '...TTTT.....',
-        '....TT......',
-        '....TT......',
-        '...TTTT.....'
-    ], { P: '#f48fb1', l: '#fce4ec', T: '#4e342e' }, 5, true);
+function buildCharGrid20x24(c, pose) {
+    const isMed = (pose === 3);
+    const isFemale = (c.gender === 'female');
+    const eyeTop = isMed ? '....SS.ll...ll.SS....' : '....SS.EE...EE.SS....';
+    const eyeBot = isMed ? '....SS.ll...ll.SS....' : '....SS.EW...EW.SS....';
 
-    ENV_SPR.pine = bakeRotmgSprite([
-        '....GGGG....',
-        '..GGGGGGGG..',
-        '.GGddddddGG.',
-        'GGddddddddGG',
-        'GGddGGGGddGG',
-        '.GGddddddGG.',
-        '..GGGGGGGG..',
-        '....TTTT....',
-        '....TTTT....',
-        '....TTTT....',
-        '...TTTTTT...'
-    ], { G: '#1b5e20', d: '#2e7d32', T: '#3e2723' }, 5, true);
+    const g = [
+        '.......HHHHHH.......',
+        '.....HHhHHHHHHhHH...',
+        '....HHhHHHHHHHHhHH..',
+        '....HHHHHHHHHHHHHH..',
+        '....SSSSSSSSSSSSSS..',
+        '....SS.BB...BB.SS...',
+        eyeTop,
+        eyeBot,
+        '....SSSSSSNNSSSSSS..',
+        '....SSSSSSNNSSSSSS..',
+        '....SSSS.MMMM.SSSS..',
+        '.....SSSSSSSSSSSS...',
+        '........SSSSSS......',
+        '.....TTTCCCCCCCTT...',
+        '....TT.CCCCCCCC.TT..',
+        '....T..CCCCCCCC..T..',
+        '....S..CCCCCCCC..S..',
+        '.......PPPPPPPP.....',
+        '.......PPP..PPP.....',
+        '.......PPP..PPP.....',
+        '.......PPP..PPP.....',
+        '.......PPP..PPP.....',
+        '.......FFF..FFF.....',
+        '.......FFF..FFF.....'
+    ];
 
-    ENV_SPR.bang = bakeRotmgSprite([
-        '...YYYYYY...',
-        '.YYYYllYYYY.',
-        'YYllllllllYY',
-        '.YYYYYYYYYY.',
-        '..YYYYYYYY..',
-        '....TTTT....',
-        '....TTTT....',
-        '....TTTT....',
-        '...TTTTTT...'
-    ], { Y: '#fbc02d', l: '#fff59d', T: '#4e342e' }, 5, true);
-
-    ENV_SPR.flower = bakeRotmgSprite([
-        'M.M',
-        '.Y.',
-        'M.M'
-    ], { M: '#ea80fc', Y: '#ffea00' }, 3, false);
-
-    ENV_SPR.lanternDay = bakeRotmgSprite([
-        '...SS...',
-        '..SSSS..',
-        '.SSSSSS.',
-        '..SYYs..',
-        '..SSSS..',
-        '...SS...',
-        '...SS...',
-        '..SSSS..'
-    ], { S: '#90a4ae', s: '#607d8b', Y: '#cfd8dc' }, 4, true);
-
-    ENV_SPR.lanternNight = bakeRotmgSprite([
-        '...SS...',
-        '..SSSS..',
-        '.SSSSSS.',
-        '..SYYs..',
-        '..SSSS..',
-        '...SS...',
-        '...SS...',
-        '..SSSS..'
-    ], { S: '#546e7a', s: '#37474f', Y: '#ffea00' }, 4, true);
-}
-initEnvSprites();
-
-const SKIN_LIST = ['#f4a27a', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
-const HAIR_LIST = [
-    { id: 0, name: 'Mái Ngang' },
-    { id: 1, name: 'Rẽ Ngôi' },
-    { id: 2, name: 'Búi Đỉnh' },
-    { id: 3, name: 'Tóc Dài' },
-    { id: 4, name: 'Đầu Trọc' }
-];
-const OUTFIT_LIST = [
-    { id: 0, name: 'Áo Lam',  main: '#46829e', trim: '#6b5344', pants: '#233b46' },
-    { id: 1, name: 'Áo Nâu',  main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
-    { id: 2, name: 'Áo Vàng', main: '#d89b3c', trim: '#8c5819', pants: '#37474f' },
-    { id: 3, name: 'Áo Hồng', main: '#c96b88', trim: '#7d3c50', pants: '#2d3748' }
-];
-
-let cfg = {
-    gender: 'male',
-    skin: SKIN_LIST[0],
-    hairStyle: 0,
-    hairColor: '#1a2c2e',
-    hairShade: '#364d47',
-    outfitId: 0
-};
-
-function buildCharacterMatrix(c, poseState) {
-    const isMed = (poseState === 3);
-    const r0 = '.HHHHHHHHH.';
-    const r1 = 'HHhHHHHhHHH';
-    const r2 = 'HHhHHHHhHHH';
-    const r3 = 'HSSSSSSSSSH';
-    const r4 = isMed ? 'SS.ll.ll.SS' : 'SS.EE.EE.SS';
-    const r5 = isMed ? 'SS..N...NSS' : 'SS.EE.EE.SS';
-    const r6 = '.SS.MMM.SS.';
-    const r7 = '....SSS....';
-    const r8 = '..TTCCCCTT.';
-    const r9 = '.TT.CCCC.TT';
-    const r10 = 'TT..CCCC..T';
-    const r11 = 'SS..CCCC..S';
-
-    let r12 = '..PPPPPPP..';
-    let r13 = '..PPP.PPP..';
-    let r14 = '..PPP.PPP..';
-    let r15 = '..FF...FF..';
-
-    if (poseState === 1) {
-        r13 = '..PPPP.PP..';
-        r14 = '..PPP..PP..';
-        r15 = '..FF....FF.';
-    } else if (poseState === 2) {
-        r13 = '..PP.PPPP..';
-        r14 = '..PP..PPP..';
-        r15 = '.FF....FF..';
-    } else if (isMed) {
-        return [
-            r0, r1, r2, r3, r4, r5, r6,
-            r7,
-            '..TTCCCCTT.',
-            '.TTTCCCCCTT',
-            '..PPPPPPPP.',
-            '.PPPPPPPPPP'
-        ];
-    }
-
-    const grid = [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15];
-
-    const style = c.hairStyle % 5;
-    if (style === 0) {
-        grid[2] = 'HHHHHHHHHHH';
-        grid[3] = 'HSSSSSSSSSH';
-    } else if (style === 1) {
-        grid[1] = 'HHh.HHh.HHH';
-        grid[2] = 'HH.HHHH.HHH';
-        grid[3] = 'HSSSSSSSSSH';
-    } else if (style === 2) {
-        grid[0] = '....HHH....';
-        grid[1] = '.HHHHHHHHH.';
-        grid[2] = 'HHhHHHHhHHH';
-    } else if (style === 3) {
-        for (let i = 3; i <= 10; i++) {
-            const arr = grid[i].split('');
-            arr[0] = 'H';
-            arr[10] = 'H';
-            grid[i] = arr.join('');
+    const st = c.hairStyle % 5;
+    if (st === 0) {
+        g[2] = '....HHhHHHHHHHhHH...';
+        g[3] = '....HHHHHHHHHHHHHH..';
+        g[4] = '....SSHHHHHHHHHHSS..';
+    } else if (st === 1) {
+        g[2] = '....HHh.HHHHHHhHH...';
+        g[3] = '....HH..HHHHHHHHHH..';
+        g[4] = '....SS..SHHHHHHHSS..';
+    } else if (st === 2) {
+        g[0] = '.........HHHH.......';
+        g[1] = '........HHhhHH......';
+        g[2] = '....HHhHHHHHHHHhHH..';
+    } else if (st === 3) {
+        for (let r = 4; r <= 15; r++) {
+            const a = g[r].split('');
+            a[3] = 'H'; a[16] = 'H';
+            g[r] = a.join('');
         }
-    } else if (style === 4) {
-        grid[0] = '..SSSSSSS..';
-        grid[1] = '.SSSSSSSSS.';
-        grid[2] = 'SSSSSSSSSSS';
+    } else if (st === 4) {
+        g[0] = '.......SSSSSSSS.....';
+        g[1] = '.....SSSSSSSSSSSS...';
+        g[2] = '....SSSSSSSSSSSSSS..';
+        g[3] = '....SSSSSSSSSSSSSS..';
     }
 
-    return grid;
+    if (isFemale && st !== 4) {
+        for (let r = 5; r <= 8; r++) {
+            const a = g[r].split('');
+            a[3] = (r % 2 === 0) ? 'H' : 'h';
+            a[16] = (r % 2 === 0) ? 'H' : 'h';
+            g[r] = a.join('');
+        }
+    }
+
+    if (pose === 1) {
+        g[18] = '.......PPPP..PP.....';
+        g[19] = '.......PPP...PP.....';
+        g[20] = '.......PPP...PP.....';
+        g[21] = '.......PPP...PP.....';
+        g[22] = '.......FFF....FF....';
+        g[23] = '.......FFF....FF....';
+    } else if (pose === 2) {
+        g[18] = '.......PP..PPPP.....';
+        g[19] = '.......PP...PPP.....';
+        g[20] = '.......PP...PPP.....';
+        g[21] = '.......PP...PPP.....';
+        g[22] = '......FF....FFF.....';
+        g[23] = '......FF....FFF.....';
+    } else if (isMed) {
+        return setRow(g, g.slice(0, 13).concat([
+            '....TTTCCCCCCCTT....',
+            '...TTT.CCCCCCCC.TTT.',
+            '....PPPPPPPPPPPPPP..',
+            '...PPPPPPPPPPPPPPPP.',
+            '....FFFFFFFFFFFFFF..'
+        ]));
+    }
+
+    return setRow(g, g);
 }
 
-function buildCharacterSprite(c, poseState) {
+const charCache = new Map();
+function getCharFrames(name, c) {
+    const key = `${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.outfitId}`;
+    if (charCache.has(key)) return charCache.get(key);
+    if (charCache.size > 600) charCache.delete(charCache.keys().next().value);
+
     const out = OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0];
-    const palette = {
-        S: c.skin,
-        H: c.hairColor || '#1a2c2e',
-        h: c.hairShade || '#364d47',
-        E: '#141716',
-        l: '#2b2420',
-        N: '#9e5a42',
-        M: '#e85d75',
-        C: out.main,
-        T: out.trim,
-        P: out.pants,
-        F: '#0f1211'
+    const pal = {
+        S: c.skin, H: c.hairColor, h: c.hairShade, B: c.hairColor,
+        E: '#141716', W: '#ffffff', l: '#2b2420', N: '#a8644c',
+        M: '#df687a', C: out.main, T: out.trim, P: out.pants, F: '#0f1211'
     };
-    const grid = buildCharacterMatrix(c, poseState);
-    return bakeRotmgSprite(grid, palette, 5, true);
-}
 
-function drawHeadHalo(ctx, cx, cy, time) {
-    const pulse = 0.88 + Math.sin(time * 0.004) * 0.12;
-    const outerR = 30 * pulse;
-    const innerR = 21 * pulse;
+    const frames = [0, 1, 2, 3].map(pose => {
+        const spr = bakePixelMatrix(buildCharGrid20x24(c, pose), pal, 3, true);
+        const cv = document.createElement('canvas');
+        cv.width = 144;
+        cv.height = 104;
+        const cx = cv.getContext('2d');
+        cx.imageSmoothingEnabled = false;
 
-    ctx.save();
-    ctx.translate(cx, cy);
+        cx.fillStyle = 'rgba(0,0,0,0.4)';
+        cx.beginPath();
+        cx.ellipse(72, 86, pose === 3 ? 22 : 15, 5, 0, 0, Math.PI * 2);
+        cx.fill();
 
-    const glow = ctx.createRadialGradient(0, 0, innerR * 0.4, 0, 0, outerR + 10);
-    glow.addColorStop(0, 'rgba(255, 245, 157, 0.35)');
-    glow.addColorStop(0.65, 'rgba(255, 202, 40, 0.25)');
-    glow.addColorStop(1, 'rgba(255, 179, 0, 0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, outerR + 10, 0, Math.PI * 2);
-    ctx.fill();
+        const topY = Math.round(86 - spr.height + ((pose === 1 || pose === 2) ? -2 : 0));
+        cx.drawImage(spr, Math.round(72 - spr.width / 2), topY);
 
-    ctx.strokeStyle = '#ffca28';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0, 0, outerR, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#fff59d';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, innerR, 0, Math.PI * 2);
-    ctx.stroke();
-
-    for (let i = 0; i < 8; i++) {
-        const ang = (i / 8) * Math.PI * 2 + time * 0.0012;
-        const r = outerR + 5 + Math.sin(time * 0.006 + i) * 2.5;
-        const sx = Math.round(Math.cos(ang) * r);
-        const sy = Math.round(Math.sin(ang) * r);
-        ctx.fillStyle = (i % 2 === 0) ? '#fff59d' : '#ffb300';
-        ctx.fillRect(sx - 2, sy - 2, 4, 4);
-    }
-
-    ctx.restore();
-}
-
-function initCreatorUI() {
-    const skinRow = document.getElementById('skin-row');
-    SKIN_LIST.forEach((col, i) => {
-        const d = document.createElement('div');
-        d.className = 'swatch' + (i === 0 ? ' active' : '');
-        d.style.background = col;
-        d.onclick = () => {
-            cfg.skin = col;
-            skinRow.querySelectorAll('.swatch').forEach(el => el.classList.remove('active'));
-            d.classList.add('active');
-            renderPreview();
-        };
-        skinRow.appendChild(d);
+        if (name) {
+            cx.font = 'bold 10px "Courier New", monospace';
+            cx.textAlign = 'center';
+            const ny = Math.max(12, topY - 6);
+            cx.strokeStyle = '#0c0e0c'; cx.lineWidth = 3; cx.strokeText(name, 72, ny);
+            cx.fillStyle = '#ffeb3b'; cx.fillText(name, 72, ny);
+        }
+        return cv;
     });
 
-    const hairRow = document.getElementById('hair-row');
-    HAIR_LIST.forEach((h, i) => {
-        const b = document.createElement('button');
-        b.className = 'mini-btn' + (i === 0 ? ' active' : '');
-        b.textContent = h.name;
-        b.onclick = () => {
-            cfg.hairStyle = h.id;
-            hairRow.querySelectorAll('.mini-btn').forEach(el => el.classList.remove('active'));
-            b.classList.add('active');
-            renderPreview();
-        };
-        hairRow.appendChild(b);
-    });
-
-    const outfitRow = document.getElementById('outfit-row');
-    OUTFIT_LIST.forEach((o, i) => {
-        const b = document.createElement('button');
-        b.className = 'mini-btn' + (i === 0 ? ' active' : '');
-        b.textContent = o.name;
-        b.onclick = () => {
-            cfg.outfitId = o.id;
-            outfitRow.querySelectorAll('.mini-btn').forEach(el => el.classList.remove('active'));
-            b.classList.add('active');
-            renderPreview();
-        };
-        outfitRow.appendChild(b);
-    });
-    renderPreview();
-}
-
-function setGender(g, btn) {
-    cfg.gender = g;
-    document.querySelectorAll('#gender-row .mini-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderPreview();
+    charCache.set(key, frames);
+    return frames;
 }
 
 function renderPreview() {
@@ -730,615 +392,289 @@ function renderPreview() {
     const px = pc.getContext('2d');
     px.imageSmoothingEnabled = false;
     px.clearRect(0, 0, pc.width, pc.height);
-    px.fillStyle = 'rgba(20, 24, 20, 0.16)';
-    px.beginPath();
-    px.ellipse(42, 86, 26, 5, 0, 0, Math.PI * 2);
-    px.fill();
-    const spr = buildCharacterSprite(cfg, 0);
-    px.drawImage(spr, Math.round(42 - spr.width / 2), Math.round(86 - spr.height + 2));
+    const spr = bakePixelMatrix(buildCharGrid20x24(cfg, 0), {
+        S: cfg.skin, H: cfg.hairColor, h: cfg.hairShade, B: cfg.hairColor,
+        E: '#141716', W: '#ffffff', l: '#2b2420', N: '#a8644c',
+        M: '#df687a',
+        C: (OUTFIT_LIST[cfg.outfitId] || OUTFIT_LIST[0]).main,
+        T: (OUTFIT_LIST[cfg.outfitId] || OUTFIT_LIST[0]).trim,
+        P: (OUTFIT_LIST[cfg.outfitId] || OUTFIT_LIST[0]).pants,
+        F: '#0f1211'
+    }, 3, true);
+    px.drawImage(spr, Math.round(38 - spr.width / 2), Math.round(43 - spr.height / 2));
 }
 
-const MAP_W = 2000;
-const MAP_H = 1700;
-const TEMPLE = { x: 720, y: 270, w: 560, h: 320 };
-const POND = { x: 1420, y: 920, r: 165 };
-
-function getVNTime() {
-    const d = new Date();
-    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
-    return new Date(utc + 3600000 * 7);
-}
-function isNight(vnDate) {
-    const h = vnDate.getHours();
-    return (h >= 18 || h < 6);
-}
-
-function getRiverY(x) { return 1240 + Math.sin(x * 0.0038) * 52; }
-const RIVER_HALF = 56;
-const BRIDGE_X = 1000;
-
-const LANTERNS = [
-    { x: 920, y: 630 }, { x: 1080, y: 630 }, { x: 910, y: 790 }, { x: 1090, y: 790 },
-    { x: 900, y: 1030 }, { x: 1100, y: 1030 }, { x: 920, y: 1380 }, { x: 1080, y: 1380 }
-];
-
-const TREES = [
-    { x: 220, y: 310, t: 'peach' }, { x: 580, y: 330, t: 'peach' }, { x: 1420, y: 290, t: 'peach' },
-    { x: 200, y: 590, t: 'bang' },  { x: 660, y: 620, t: 'bang' },  { x: 1780, y: 440, t: 'bang' },
-    { x: 160, y: 880, t: 'pine' },  { x: 450, y: 960, t: 'pine' },  { x: 1780, y: 880, t: 'pine' },
-    { x: 280, y: 1520, t: 'peach' },{ x: 650, y: 1560, t: 'bang' },{ x: 1420, y: 1520, t: 'pine' }
-];
-
-const FLOWERS = [];
-for (let i = 0; i < 70; i++) {
-    FLOWERS.push({
-        x: 70 + ((i * 313) % (MAP_W - 140)),
-        y: 250 + ((i * 479) % (MAP_H - 290))
+function initCreator() {
+    const sr = document.getElementById('skin-row');
+    SKIN_LIST.forEach((col, i) => {
+        const d = document.createElement('div'); d.className = 'swatch' + (i === 0 ? ' active' : ''); d.style.background = col;
+        d.onclick = () => { cfg.skin = col; sr.querySelectorAll('.swatch').forEach(x => x.classList.remove('active')); d.classList.add('active'); renderPreview(); };
+        sr.appendChild(d);
     });
+    const hr = document.getElementById('hair-row');
+    HAIR_LIST.forEach((h, i) => {
+        const b = document.createElement('button'); b.className = 'mini-btn' + (i === 0 ? ' active' : ''); b.textContent = h;
+        b.onclick = () => { cfg.hairStyle = i; hr.querySelectorAll('.mini-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderPreview(); };
+        hr.appendChild(b);
+    });
+    const or = document.getElementById('outfit-row');
+    OUTFIT_LIST.forEach((o, i) => {
+        const b = document.createElement('button'); b.className = 'mini-btn' + (i === 0 ? ' active' : ''); b.textContent = o.name;
+        b.onclick = () => { cfg.outfitId = i; or.querySelectorAll('.mini-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderPreview(); };
+        or.appendChild(b);
+    });
+    renderPreview();
+}
+function setGender(g, btn) {
+    cfg.gender = g;
+    document.querySelectorAll('#gender-row .mini-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPreview();
 }
 
-const KOI_COLORS = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff', '#f50057'];
-const KOI_LIST = KOI_COLORS.map((col, idx) => ({
-    col, ang: idx * 0.9, rad: 38 + idx * 14, spd: 0.00018 + (idx % 3) * 0.00005
-}));
-
+// --- BẢN ĐỒ TĨNH ---
+const MAP_W = 1800, MAP_H = 1500;
 const staticCanvas = document.createElement('canvas');
-staticCanvas.width = MAP_W;
-staticCanvas.height = MAP_H;
+staticCanvas.width = MAP_W; staticCanvas.height = MAP_H;
 const staticCtx = staticCanvas.getContext('2d', { alpha: false });
-staticCtx.imageSmoothingEnabled = false;
 let cachedNight = null;
 
-function buildStaticMap(night) {
+function buildMap(night) {
     if (cachedNight === night) return;
     cachedNight = night;
     const s = staticCtx;
-    s.imageSmoothingEnabled = false;
-
-    const tile = 32;
-    for (let y = 210; y < MAP_H; y += tile) {
-        for (let x = 0; x < MAP_W; x += tile) {
-            const v = Math.sin(x * 0.0045) + Math.cos(y * 0.0045);
-            const alt = ((x / tile) + (y / tile)) % 2 === 0;
-            s.fillStyle = night
-                ? (v > 0.3 ? (alt ? '#192517' : '#152013') : (alt ? '#142916' : '#102212'))
-                : (v > 0.3 ? (alt ? '#4c6638' : '#435b31') : (alt ? '#2e7d32' : '#266e2a'));
-            s.fillRect(x, y, tile, tile);
-        }
-    }
-
-    const skyH = 225;
-    const skyGrad = s.createLinearGradient(0, 0, 0, skyH);
-    if (night) {
-        skyGrad.addColorStop(0, '#0a101d');
-        skyGrad.addColorStop(0.65, '#162235');
-        skyGrad.addColorStop(1, '#1b2b22');
-    } else {
-        skyGrad.addColorStop(0, '#81c3f7');
-        skyGrad.addColorStop(0.6, '#cce6fa');
-        skyGrad.addColorStop(1, '#dce8dc');
-    }
-    s.fillStyle = skyGrad;
-    s.fillRect(0, 0, MAP_W, skyH);
-
-    s.fillStyle = night ? 'rgba(26, 40, 56, 0.75)' : 'rgba(104, 142, 152, 0.65)';
-    s.beginPath();
-    s.moveTo(0, skyH); s.lineTo(0, 120); s.lineTo(260, 46); s.lineTo(580, 128);
-    s.lineTo(940, 38); s.lineTo(1320, 110); s.lineTo(1680, 42); s.lineTo(MAP_W, 110);
-    s.lineTo(MAP_W, skyH); s.closePath(); s.fill();
-
-    const mistGrad = s.createLinearGradient(0, 95, 0, skyH + 24);
-    mistGrad.addColorStop(0, night ? 'rgba(27,43,34,0)' : 'rgba(232,244,242,0)');
-    mistGrad.addColorStop(0.65, night ? 'rgba(27,43,34,0.78)' : 'rgba(220,238,224,0.86)');
-    mistGrad.addColorStop(1, night ? 'rgba(27,43,34,0)' : 'rgba(76,102,56,0)');
-    s.fillStyle = mistGrad;
-    s.fillRect(0, 95, MAP_W, skyH - 95 + 24);
-
+    s.fillStyle = night ? '#142014' : '#356e35';
+    s.fillRect(0, 0, MAP_W, MAP_H);
+    s.fillStyle = night ? '#0d1829' : '#8ec5f5';
+    s.fillRect(0, 0, MAP_W, 180);
     s.strokeStyle = night ? '#4a382e' : '#9e6b4b';
-    s.lineWidth = 68;
-    s.beginPath();
-    s.moveTo(1000, 590);
-    for (let y = 590; y <= 1580; y += 20) {
-        const wx = (y > 1150 && y < 1330) ? 0 : Math.sin((y - 590) * 0.008) * 28;
-        s.lineTo(1000 + wx, y);
-    }
-    s.stroke();
-
+    s.lineWidth = 56;
+    s.beginPath(); s.moveTo(900, 460); s.lineTo(900, 1420); s.stroke();
     s.fillStyle = night ? '#143f59' : '#4682be';
-    s.beginPath();
-    s.moveTo(0, getRiverY(0) - RIVER_HALF);
-    for (let x = 0; x <= MAP_W; x += 24) s.lineTo(x, getRiverY(x) - RIVER_HALF);
-    for (let x = MAP_W; x >= 0; x -= 24) s.lineTo(x, getRiverY(x) + RIVER_HALF);
-    s.closePath(); s.fill();
-
-    const by = getRiverY(BRIDGE_X);
+    s.fillRect(0, 1020, MAP_W, 84);
     s.fillStyle = night ? '#3e2723' : '#6d4c41';
-    s.fillRect(BRIDGE_X - 50, by - RIVER_HALF - 10, 100, RIVER_HALF * 2 + 20);
-    s.strokeStyle = '#111'; s.lineWidth = 3;
-    s.strokeRect(BRIDGE_X - 50, by - RIVER_HALF - 10, 100, RIVER_HALF * 2 + 20);
-
-    s.save();
-    s.translate(POND.x, POND.y);
-    s.fillStyle = night ? '#263228' : '#68785a';
-    s.beginPath(); s.arc(0, 0, POND.r + 10, 0, Math.PI, false); s.closePath(); s.fill();
-    s.fillStyle = night ? '#123c54' : '#3a7bb8';
-    s.strokeStyle = '#141c14'; s.lineWidth = 4;
-    s.beginPath(); s.arc(0, 0, POND.r, 0, Math.PI, false); s.closePath(); s.fill(); s.stroke();
-    s.restore();
-
-    FLOWERS.forEach(f => {
-        if (Math.abs(f.y - getRiverY(f.x)) < RIVER_HALF + 18) return;
-        if (f.y >= POND.y - 12 && Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 18) return;
-        if (f.x > TEMPLE.x - 16 && f.x < TEMPLE.x + TEMPLE.w + 16 && f.y > TEMPLE.y - 16 && f.y < TEMPLE.y + TEMPLE.h + 16) return;
-        s.drawImage(ENV_SPR.flower, f.x, f.y);
-    });
-
+    s.fillRect(855, 1012, 90, 100);
     s.fillStyle = night ? '#4a3d31' : '#d7bfa0';
-    s.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
-    s.strokeStyle = '#111'; s.lineWidth = 4;
-    s.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
-
-    const cx = TEMPLE.x + TEMPLE.w / 2;
-    const cy = TEMPLE.y + 125;
-    s.fillStyle = '#f39c12'; s.strokeStyle = '#111'; s.lineWidth = 2.5;
-    s.fillRect(cx - 42, cy - 8, 84, 18); s.strokeRect(cx - 42, cy - 8, 84, 18);
-    s.fillRect(cx - 26, cy - 42, 52, 34); s.strokeRect(cx - 26, cy - 42, 52, 34);
-    s.fillRect(cx - 16, cy - 72, 32, 30); s.strokeRect(cx - 16, cy - 72, 32, 30);
-    s.fillStyle = '#1c2833';
-    s.fillRect(cx - 16, cy - 78, 32, 7);
-
-    const lSpr = night ? ENV_SPR.lanternNight : ENV_SPR.lanternDay;
-    LANTERNS.forEach(l => {
-        s.fillStyle = 'rgba(0,0,0,0.35)';
-        s.beginPath(); s.ellipse(l.x, l.y, 11, 4, 0, 0, Math.PI * 2); s.fill();
-        s.drawImage(lSpr, l.x - lSpr.width / 2, l.y - lSpr.height + 4);
-    });
-
-    TREES.forEach(t => {
-        s.fillStyle = 'rgba(0,0,0,0.38)';
-        s.beginPath(); s.ellipse(t.x, t.y + 4, 24, 9, 0, 0, Math.PI * 2); s.fill();
-        const spr = ENV_SPR[t.t] || ENV_SPR.peach;
-        s.drawImage(spr, Math.round(t.x - spr.width / 2), Math.round(t.y - spr.height + 8));
-    });
-
-    s.strokeStyle = '#0c0e0c'; s.lineWidth = 16;
-    s.strokeRect(0, 0, MAP_W, MAP_H);
+    s.fillRect(660, 210, 480, 250);
+    s.strokeStyle = '#111'; s.lineWidth = 3; s.strokeRect(660, 210, 480, 250);
 }
 
-function drawPondKoi(ctx, time, night) {
-    ctx.save();
-    ctx.translate(POND.x, POND.y);
-    KOI_LIST.forEach((f, i) => {
-        const t = time * f.spd + f.ang;
-        const fx = Math.round(Math.cos(t) * (f.rad * 0.85));
-        const fy = Math.round(22 + Math.abs(Math.sin(t * 0.65)) * (f.rad * 0.62));
-        const dir = (-Math.sin(t) >= 0) ? 1 : -1;
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.scale(dir, 1);
-        ctx.fillStyle = '#0c0e0c'; ctx.fillRect(-7, -3, 14, 6);
-        ctx.fillStyle = f.col; ctx.fillRect(-6, -2, 12, 4);
-        const wag = Math.round(Math.sin(time * 0.005 + i) * 2);
-        ctx.fillRect(-10, -3 + wag, 4, 6);
-        ctx.restore();
-    });
-    ctx.restore();
-
-    if (night) {
-        const cx = TEMPLE.x + TEMPLE.w / 2;
-        const cy = TEMPLE.y + 90;
-        const g = ctx.createRadialGradient(cx, cy, 12, cx, cy, 120);
-        g.addColorStop(0, 'rgba(255, 245, 157, 0.7)');
-        g.addColorStop(1, 'rgba(255, 193, 7, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(cx, cy, 120, 0, Math.PI * 2); ctx.fill();
-    }
-}
-
-const spriteCache = new Map();
-const MAX_CACHE = 1200;
-
-function getCharKey(name, c) {
-    return `${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.hairColor || ''}|${c.outfitId}`;
-}
-
-function getCharacterFrames(name, c) {
-    const key = getCharKey(name, c);
-    if (spriteCache.has(key)) return spriteCache.get(key);
-    if (spriteCache.size >= MAX_CACHE) {
-        spriteCache.delete(spriteCache.keys().next().value);
-    }
-
-    const frames = [0, 1, 2, 3].map(pose => {
-        const spr = buildCharacterSprite(c, pose);
-        const cv = document.createElement('canvas');
-        cv.width = 180;
-        cv.height = 120;
-        const cx = cv.getContext('2d');
-        cx.imageSmoothingEnabled = false;
-
-        cx.fillStyle = 'rgba(0, 0, 0, 0.42)';
-        cx.beginPath();
-        cx.ellipse(90, 94, pose === 3 ? 25 : 18, 6, 0, 0, Math.PI * 2);
-        cx.fill();
-
-        const bob = (pose === 1 || pose === 2) ? -2 : 0;
-        const topY = Math.round(94 - spr.height + bob);
-        cx.drawImage(spr, Math.round(90 - spr.width / 2), topY);
-
-        if (name) {
-            const nameY = Math.max(14, topY - 8);
-            cx.font = 'bold 11px "Courier New", monospace';
-            cx.textAlign = 'center';
-            cx.strokeStyle = '#0c0e0c';
-            cx.lineWidth = 3;
-            cx.strokeText(name, 90, nameY);
-            cx.fillStyle = '#ffeb3b';
-            cx.fillText(name, 90, nameY);
-        }
-        return cv;
-    });
-
-    spriteCache.set(key, frames);
-    return frames;
-}
-
-function drawEntity(ctx, x, y, name, c, med, walk, chat, time) {
-    const rx = Math.round(x);
-    const ry = Math.round(y);
-
-    const frames = getCharacterFrames(name, c);
-    let idx = 0;
-    if (med) idx = 3;
-    else if (walk > 0.01) idx = (Math.sin(walk) >= 0) ? 1 : 2;
-
-    if (med) {
-        drawHeadHalo(ctx, rx, ry - 44, time);
-    }
-
-    ctx.drawImage(frames[idx], rx - 90, ry - 94);
-
-    if (chat) {
-        ctx.font = '11px "Courier New", monospace';
-        ctx.textAlign = 'center';
-        const w = Math.max(ctx.measureText(chat).width + 14, 36);
-        const by = ry - 118;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.strokeStyle = '#0c0e0c'; ctx.lineWidth = 2;
-        ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 20);
-        ctx.strokeRect(Math.round(rx - w / 2), by, Math.round(w), 20);
-        ctx.fillStyle = '#111';
-        ctx.fillText(chat, rx, by + 14);
-    }
-}
-
+// --- ĐIỀU KHIỂN & MẠNG ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
-
-function syncCanvasResolution() {
-    const rect = document.getElementById('game-frame').getBoundingClientRect();
-    const w = Math.max(360, Math.round(rect.width));
-    const h = Math.max(640, Math.round(rect.height));
-    if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-    }
+function resizeCanvas() {
+    const r = document.getElementById('game-frame').getBoundingClientRect();
+    canvas.width = Math.max(360, Math.round(r.width));
+    canvas.height = Math.max(640, Math.round(r.height));
     ctx.imageSmoothingEnabled = false;
 }
-window.addEventListener('resize', syncCanvasResolution);
-syncCanvasResolution();
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-let myName = 'Hành Giả';
-let myX = 1000, myY = 900, targetX = 1000, targetY = 900;
-let isMeditating = false, walkPhase = 0;
-let chatMsg = '', chatTicks = 0;
+let myName = 'Hành Giả', myX = 900, myY = 760, tx = 900, ty = 760;
+let isMed = false, walk = 0, chatMsg = '', chatTicks = 0;
 const keys = {};
-
 window.addEventListener('keydown', e => {
     if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-    const k = e.key.toLowerCase();
-    keys[k] = true;
-    if (e.code === 'Space') {
-        e.preventDefault();
-        toggleMeditate();
-    } else if (k === 'm') {
-        toggleMusic();
-    } else if (e.key === 'Enter') {
-        document.getElementById('chat-input').focus();
-    } else if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
-        targetX = myX; targetY = myY;
-    }
+    const k = e.key.toLowerCase(); keys[k] = true;
+    if (e.code === 'Space') { e.preventDefault(); toggleMeditate(); }
+    else if (k === 'm') toggleMusic();
+    else if (e.key === 'Enter') document.getElementById('chat-input').focus();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-function setMoveTarget(clientX, clientY) {
-    if (isMeditating) return;
-    const rect = canvas.getBoundingClientRect();
-    const sx = clientX - rect.left;
-    const sy = clientY - rect.top;
-    const camX = canvas.width / 2 - myX;
-    const camY = canvas.height / 2 - myY;
-    targetX = sx - camX;
-    targetY = sy - camY;
-}
-
 canvas.addEventListener('pointerdown', e => {
-    setMoveTarget(e.clientX, e.clientY);
+    if (isMed) return;
+    const r = canvas.getBoundingClientRect();
+    tx = (e.clientX - r.left) - (canvas.width / 2 - myX);
+    ty = (e.clientY - r.top) - (canvas.height / 2 - myY);
 });
 
 function toggleMeditate() {
-    isMeditating = !isMeditating;
-    const btn = document.getElementById('btn-meditate');
-    btn.classList.toggle('active', isMeditating);
-    if (isMeditating) { targetX = myX; targetY = myY; }
+    isMed = !isMed;
+    document.getElementById('btn-meditate').classList.toggle('active', isMed);
+    if (isMed) { tx = myX; ty = myY; }
 }
-
-function sendChatFromInput() {
+function sendChat() {
     const inp = document.getElementById('chat-input');
-    const t = inp.value.trim();
-    if (t) { chatMsg = t; chatTicks = 360; }
-    inp.value = '';
-    inp.blur();
+    const v = inp.value.trim();
+    if (v) { chatMsg = v; chatTicks = 300; }
+    inp.value = ''; inp.blur();
 }
-function onChatKey(e) {
-    if (e.key === 'Enter') sendChatFromInput();
-}
+function onChatKey(e) { if (e.key === 'Enter') sendChat(); }
 
-function canMove(nx, ny) {
-    if (nx < 35 || nx > MAP_W - 35 || ny < 245 || ny > MAP_H - 35) return false;
-    if (Math.abs(ny - getRiverY(nx)) < RIVER_HALF - 4 && Math.abs(nx - BRIDGE_X) > 44) return false;
-    if (ny >= POND.y - 4 && Math.hypot(nx - POND.x, ny - POND.y) < POND.r + 8) return false;
-    const cx = TEMPLE.x + TEMPLE.w / 2;
-    if (Math.abs(nx - cx) < 50 && ny > TEMPLE.y + 40 && ny < TEMPLE.y + 140) return false;
-    return true;
-}
+const ROOM_ID = 'thienvien_v71_room';
+const MAX_CONNS = 20;
+const MAX_RENDER = 100;
+let peer = null, syncTimer = null, seq = 0;
+const conns = {}, remotes = {}, profiles = {}, seen = new Set();
 
-const ROOM_ID = 'thienvien_v63_room_2026';
-const MAX_PEERS = 24;
-const MAX_VISIBLE = 280;
-let peer = null;
-const conns = {};
-const remotes = {};
-const profiles = {};
-const seenMsgIds = new Map();
-let syncTimer = null;
-let lastSig = '';
-let tickCount = 0;
-let msgCounter = 0;
-
-function markAndCheckSeen(msgId) {
-    if (!msgId) return false;
-    if (seenMsgIds.has(msgId)) return true;
-    seenMsgIds.set(msgId, Date.now());
-    if (seenMsgIds.size > 1500) {
-        const oldestKey = seenMsgIds.keys().next().value;
-        seenMsgIds.delete(oldestKey);
-    }
-    return false;
+function enterGame() {
+    myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('chat-dock').style.display = 'flex';
+    startP2P();
 }
 
-function createPeerInstance(customId = null) {
-    const iceCfg = {
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        }
-    };
-    const p = customId ? new Peer(customId, iceCfg) : new Peer(iceCfg);
+function makePeer(id) {
+    const p = id ? new Peer(id) : new Peer();
     p.on('open', () => {
-        updateOnlineHUD();
-        if (p.id !== ROOM_ID) linkPeer(ROOM_ID);
-        beginSync();
+        if (p.id !== ROOM_ID) connectTo(ROOM_ID);
+        startSync();
     });
-    p.on('disconnected', () => {
-        try { if (!p.destroyed) p.reconnect(); } catch (_) {}
-    });
+    p.on('disconnected', () => { try { if (!p.destroyed) p.reconnect(); } catch (_) {} });
     p.on('error', err => {
-        if (err && err.type === 'unavailable-id' && customId) {
-            try { p.destroy(); } catch (_) {}
-            peer = createPeerInstance(null);
-        } else {
-            updateOnlineHUD();
-            beginSync();
-        }
+        if (err && err.type === 'unavailable-id' && id) { try { p.destroy(); } catch (_) {} peer = makePeer(null); }
+        else startSync();
     });
     p.on('connection', bindConn);
     return p;
 }
 
-function initP2P() {
-    if (typeof Peer === 'undefined') { updateOnlineHUD(); return; }
-    peer = createPeerInstance(ROOM_ID);
+function startP2P() {
+    if (typeof Peer === 'undefined') return;
+    peer = makePeer(ROOM_ID);
 }
 
-function linkPeer(id) {
-    if (!id || !peer || peer.destroyed || conns[id] || id === peer.id) return;
-    if (Object.keys(conns).length >= MAX_PEERS) return;
+function connectTo(id) {
+    if (!id || !peer || peer.destroyed || conns[id] || id === peer.id || Object.keys(conns).length >= MAX_CONNS) return;
     try { bindConn(peer.connect(id, { reliable: false })); } catch (_) {}
-}
-
-function sendProfile(targetConn = null) {
-    if (!peer || !peer.id) return;
-    const pkt = { t: 'P', id: peer.id, n: myName, c: cfg };
-    if (targetConn && targetConn.open) targetConn.send(pkt);
-    else {
-        for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
-    }
 }
 
 function bindConn(conn) {
     conns[conn.peer] = conn;
     conn.on('open', () => {
-        updateOnlineHUD();
-        sendProfile(conn);
-        const peers = Object.keys(conns).filter(id => id !== conn.peer);
-        if (peers.length > 0) conn.send({ t: 'L', list: peers.slice(0, 12) });
+        if (conn.open) conn.send({ t: 'P', id: peer.id, n: myName, c: cfg });
+        const peers = Object.keys(conns).filter(x => x !== conn.peer).slice(0, 10);
+        if (peers.length && conn.open) conn.send({ t: 'L', l: peers });
     });
     conn.on('data', d => {
         if (!d || !d.t) return;
-        if (d.t === 'L' && Array.isArray(d.list)) {
-            d.list.forEach(id => { if (Object.keys(conns).length < MAX_PEERS) linkPeer(id); });
-        } else if (d.t === 'P') {
-            const first = !profiles[d.id];
+        if (d.t === 'L' && Array.isArray(d.l)) d.l.forEach(connectTo);
+        else if (d.t === 'P') {
             profiles[d.id] = { n: d.n || 'Hành Giả', c: d.c || cfg };
-            if (remotes[d.id]) {
-                remotes[d.id].name = profiles[d.id].n;
-                remotes[d.id].cfg = profiles[d.id].c;
-            }
-            if (first) relay(d, conn.peer);
+            if (remotes[d.id]) { remotes[d.id].name = profiles[d.id].n; remotes[d.id].cfg = profiles[d.id].c; }
         } else if (d.t === 'M') {
-            if (markAndCheckSeen(d.mid)) return;
+            if (d.mid) {
+                if (seen.has(d.mid)) return;
+                seen.add(d.mid);
+                if (seen.size > 1200) seen.delete(seen.values().next().value);
+            }
             const pr = profiles[d.id] || { n: 'Hành Giả', c: cfg };
             let rp = remotes[d.id];
             if (!rp) {
-                rp = {
-                    id: d.id, name: pr.n, cfg: pr.c,
-                    x: d.x, y: d.y, tx: d.x, ty: d.y,
-                    med: !!(d.f & 1), walk: 0, chat: d.ch || '',
-                    lastSeen: Date.now()
-                };
-                remotes[d.id] = rp;
+                rp = remotes[d.id] = { id: d.id, name: pr.n, cfg: pr.c, x: d.x, y: d.y, tx: d.x, ty: d.y, med: !!(d.f & 1), walk: 0, chat: d.ch || '', ts: Date.now() };
                 if (!profiles[d.id] && conn.open) conn.send({ t: 'QP', target: d.id });
             } else {
-                rp.tx = d.x; rp.ty = d.y;
-                rp.med = !!(d.f & 1);
-                rp.chat = d.ch || '';
-                rp.lastSeen = Date.now();
+                rp.tx = d.x; rp.ty = d.y; rp.med = !!(d.f & 1); rp.chat = d.ch || ''; rp.ts = Date.now();
             }
-            const hop = (d.h || 0) + 1;
-            if (hop <= 3) relay(Object.assign({}, d, { h: hop }), conn.peer);
-            updateOnlineHUD();
-        } else if (d.t === 'QP') {
-            if (d.target === peer.id) sendProfile(conn);
-            else if (profiles[d.target] && conn.open) {
-                const p = profiles[d.target];
-                conn.send({ t: 'P', id: d.target, n: p.n, c: p.c });
+            if ((d.h || 0) < 3) {
+                for (const k in conns) if (k !== conn.peer && conns[k] && conns[k].open) conns[k].send(Object.assign({}, d, { h: (d.h || 0) + 1 }));
             }
+            document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
+        } else if (d.t === 'QP' && conn.open) {
+            if (d.target === peer.id) conn.send({ t: 'P', id: peer.id, n: myName, c: cfg });
+            else if (profiles[d.target]) conn.send({ t: 'P', id: d.target, n: profiles[d.target].n, c: profiles[d.target].c });
         }
     });
-    conn.on('close', () => {
-        delete conns[conn.peer];
-        updateOnlineHUD();
-    });
-    conn.on('error', () => {
-        delete conns[conn.peer];
-        updateOnlineHUD();
-    });
+    conn.on('close', () => { delete conns[conn.peer]; });
+    conn.on('error', () => { delete conns[conn.peer]; });
 }
 
-function relay(pkt, exceptId) {
-    for (const k in conns) {
-        if (k !== exceptId && conns[k] && conns[k].open) conns[k].send(pkt);
-    }
-}
-
-function beginSync() {
+function startSync() {
     if (syncTimer) return;
     syncTimer = setInterval(() => {
         if (!peer || peer.destroyed || !peer.id) return;
-        if (peer.disconnected) {
-            try { peer.reconnect(); } catch (_) {}
-        }
-        tickCount++;
-        const flags = (isMeditating ? 1 : 0) | ((!isMeditating && walkPhase > 0) ? 2 : 0);
-        const rx = Math.round(myX), ry = Math.round(myY);
-        const sig = `${rx},${ry},${flags},${chatMsg}`;
-        if (sig !== lastSig || tickCount % 5 === 0) {
-            lastSig = sig;
-            msgCounter = (msgCounter + 1) % 1000000;
-            const pkt = { t: 'M', mid: `${peer.id}_${msgCounter}`, id: peer.id, x: rx, y: ry, f: flags, ch: chatMsg, h: 0 };
-            for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
-        }
+        if (peer.disconnected) { try { peer.reconnect(); } catch (_) {} }
+        const flags = (isMed ? 1 : 0) | ((!isMed && walk > 0) ? 2 : 0);
+        const pkt = { t: 'M', mid: `${peer.id}_${++seq}`, id: peer.id, x: Math.round(myX), y: Math.round(myY), f: flags, ch: chatMsg, h: 0 };
+        for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
 
         const now = Date.now();
-        let changed = false;
-        for (const id in remotes) {
-            if (now - remotes[id].lastSeen > 25000) {
-                delete remotes[id];
-                changed = true;
-            }
-        }
-        if (changed) updateOnlineHUD();
-
-        if (peer.id !== ROOM_ID && (!conns[ROOM_ID] || !conns[ROOM_ID].open)) {
-            if (conns[ROOM_ID]) delete conns[ROOM_ID];
-            linkPeer(ROOM_ID);
-        }
-    }, 200);
+        let remChanged = false;
+        for (const id in remotes) if (now - remotes[id].ts > 22000) { delete remotes[id]; remChanged = true; }
+        if (remChanged) document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
+        if (peer.id !== ROOM_ID && (!conns[ROOM_ID] || !conns[ROOM_ID].open)) { delete conns[ROOM_ID]; connectTo(ROOM_ID); }
+    }, 250);
 }
 
-function updateOnlineHUD() {
-    document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
-}
-
-function stepSimulation() {
-    if (!isMeditating) {
-        let vx = 0, vy = 0;
-        const spd = 3.4;
+function stepSim() {
+    if (!isMed) {
+        let vx = 0, vy = 0; const spd = 3.5;
         if (keys['w'] || keys['arrowup']) vy -= 1;
         if (keys['s'] || keys['arrowdown']) vy += 1;
         if (keys['a'] || keys['arrowleft']) vx -= 1;
         if (keys['d'] || keys['arrowright']) vx += 1;
-
-        if (vx !== 0 || vy !== 0) {
-            const len = Math.hypot(vx, vy);
-            vx = (vx / len) * spd; vy = (vy / len) * spd;
-            if (canMove(myX + vx, myY)) myX += vx;
-            if (canMove(myX, myY + vy)) myY += vy;
-            targetX = myX; targetY = myY;
-            walkPhase += 0.24;
+        if (vx || vy) {
+            const l = Math.hypot(vx, vy);
+            myX = Math.max(30, Math.min(MAP_W - 30, myX + (vx / l) * spd));
+            myY = Math.max(190, Math.min(MAP_H - 30, myY + (vy / l) * spd));
+            tx = myX; ty = myY; walk += 0.25;
         } else {
-            const dx = targetX - myX, dy = targetY - myY, dist = Math.hypot(dx, dy);
-            if (dist > spd) {
-                const stepX = (dx / dist) * spd, stepY = (dy / dist) * spd;
-                if (canMove(myX + stepX, myY)) myX += stepX;
-                if (canMove(myX, myY + stepY)) myY += stepY;
-                walkPhase += 0.24;
-            } else {
-                walkPhase = 0;
-            }
+            const dx = tx - myX, dy = ty - myY, d = Math.hypot(dx, dy);
+            if (d > spd) { myX += (dx / d) * spd; myY += (dy / d) * spd; walk += 0.25; }
+            else walk = 0;
         }
     }
-
     for (const id in remotes) {
-        const rp = remotes[id];
-        const dx = rp.tx - rp.x, dy = rp.ty - rp.y;
-        if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
-            rp.x += dx * 0.24;
-            rp.y += dy * 0.24;
-            rp.walk += 0.22;
-        } else {
-            rp.x = rp.tx; rp.y = rp.ty; rp.walk = 0;
-        }
+        const rp = remotes[id], dx = rp.tx - rp.x, dy = rp.ty - rp.y;
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) { rp.x += dx * 0.25; rp.y += dy * 0.25; rp.walk += 0.22; }
+        else { rp.x = rp.tx; rp.y = rp.ty; rp.walk = 0; }
     }
-
-    if (chatTicks > 0) { chatTicks--; if (chatTicks === 0) chatMsg = ''; }
+    if (chatTicks > 0 && --chatTicks === 0) chatMsg = '';
 }
 
-const renderList = [];
-let fpsFrames = 0, fpsLast = performance.now(), fpsVal = 60;
+function drawHeadHalo(cx, cy, t) {
+    const r = 24 + Math.sin(t * 0.004) * 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = '#ffca28';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#fff59d';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, r - 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+}
 
-function loop(time) {
-    fpsFrames++;
-    if (time - fpsLast >= 1000) {
-        fpsVal = fpsFrames;
-        fpsFrames = 0;
-        fpsLast = time;
-        document.getElementById('hud-fps').textContent = fpsVal + ' FPS';
+function drawPerson(e, t) {
+    const rx = Math.round(e.x), ry = Math.round(e.y);
+    const frames = getCharFrames(e.name, e.cfg);
+    const idx = e.med ? 3 : (e.walk > 0.01 ? (Math.sin(e.walk) >= 0 ? 1 : 2) : 0);
+    if (e.med) drawHeadHalo(rx, ry - 48, t);
+    ctx.drawImage(frames[idx], rx - 72, ry - 86);
+    if (e.chat) {
+        ctx.font = '11px "Courier New", monospace'; ctx.textAlign = 'center';
+        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 104;
+        ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 18);
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.strokeRect(Math.round(rx - w / 2), by, Math.round(w), 18);
+        ctx.fillStyle = '#111'; ctx.fillText(e.chat, rx, by + 13);
+    }
+}
+
+const FRAME_INTERVAL = 1000 / 30;
+let lastFrame = 0, fpsCnt = 0, fpsTick = performance.now();
+const list = [];
+
+function loop(now) {
+    requestAnimationFrame(loop);
+    if (document.hidden) return;
+    if (now - lastFrame < FRAME_INTERVAL) return;
+    lastFrame = now;
+
+    fpsCnt++;
+    if (now - fpsTick >= 1000) {
+        document.getElementById('hud-fps').textContent = fpsCnt + ' FPS';
+        fpsCnt = 0; fpsTick = now;
     }
 
-    const vn = getVNTime();
-    const night = isNight(vn);
-    document.getElementById('hud-clock').textContent =
-        String(vn.getHours()).padStart(2, '0') + ':' + String(vn.getMinutes()).padStart(2, '0');
+    const d = new Date(Date.now() + 7 * 3600000);
+    const h = d.getUTCHours(), m = d.getUTCMinutes();
+    document.getElementById('hud-clock').textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    const night = (h >= 18 || h < 6);
 
-    stepSimulation();
-    buildStaticMap(night);
-
-    ctx.fillStyle = '#0c0e0c';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    stepSim();
+    buildMap(night);
 
     const camX = Math.floor(canvas.width / 2 - myX);
     const camY = Math.floor(canvas.height / 2 - myY);
@@ -1346,40 +682,25 @@ function loop(time) {
 
     ctx.save();
     ctx.translate(camX, camY);
-
     const sx = Math.max(0, left), sy = Math.max(0, top);
     const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
     if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
 
-    drawPondKoi(ctx, time, night);
-
-    if (!isMeditating && (Math.abs(targetX - myX) > 3 || Math.abs(targetY - myY) > 3)) {
-        ctx.strokeStyle = '#f4d03f';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(Math.round(targetX) - 7, Math.round(targetY) - 7, 14, 14);
-    }
-
-    renderList.length = 0;
-    renderList.push({ x: myX, y: myY, name: myName, cfg, med: isMeditating, walk: walkPhase, chat: chatMsg });
+    list.length = 0;
+    list.push({ x: myX, y: myY, name: myName, cfg, med: isMed, walk, chat: chatMsg });
     for (const id in remotes) {
         const rp = remotes[id];
-        if (rp.x >= left - 90 && rp.x <= right + 90 && rp.y >= top - 110 && rp.y <= bottom + 90) {
-            renderList.push(rp);
-            if (renderList.length >= MAX_VISIBLE) break;
+        if (rp.x >= left - 72 && rp.x <= right + 72 && rp.y >= top - 90 && rp.y <= bottom + 72) {
+            list.push(rp);
+            if (list.length >= MAX_RENDER) break;
         }
     }
-    renderList.sort((a, b) => a.y - b.y);
-
-    for (let i = 0; i < renderList.length; i++) {
-        const e = renderList[i];
-        drawEntity(ctx, e.x, e.y, e.name, e.cfg, e.med, e.walk, e.chat, time);
-    }
-
+    list.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < list.length; i++) drawPerson(list[i], now);
     ctx.restore();
-    requestAnimationFrame(loop);
 }
 
-initCreatorUI();
+initCreator();
 requestAnimationFrame(loop);
 </script>
 </body>
