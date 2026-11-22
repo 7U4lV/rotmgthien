@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản - V7.4</title>
+    <title>Thiền Viện Tối Giản - V7.5</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -49,17 +49,37 @@
         }
         .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
         .icon-btn.muted { opacity: 0.6; color: #bbb; border-color: rgba(255,255,255,0.2); }
-        #chat-dock {
+
+        #chat-panel {
             position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
-            display: none; gap: 6px; align-items: center;
-            background: rgba(12,16,12,0.86); border: 1px solid rgba(255,255,255,0.2);
-            padding: 5px; border-radius: 8px;
+            display: none; flex-direction: column; gap: 5px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 6px; border-radius: 8px;
         }
+        #chat-header {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 10px; color: #dcdcdc; padding: 0 2px;
+        }
+        #chat-toggle {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+            color: #f4d03f; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer;
+        }
+        #chat-log {
+            max-height: 82px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.3;
+            padding-right: 2px;
+        }
+        #chat-panel.collapsed #chat-log { display: none; }
+        .chat-line { word-break: break-word; color: #f5f5f5; }
+        .chat-name { color: #ffeb3b; font-weight: bold; }
+        #chat-input-row { display: flex; gap: 6px; align-items: center; }
         #chat-input {
-            flex: 1; min-width: 0; background: #0c100c; border: 1px solid #485644;
+            flex: 1; min-width: 0; background: rgba(12,16,12,0.82); border: 1px solid #485644;
             color: #fff; padding: 6px 8px; border-radius: 6px;
             font-family: inherit; font-size: 12px; outline: none;
         }
+
         #login-screen {
             position: absolute; inset: 0; background: rgba(10,14,10,0.96);
             display: flex; justify-content: center; align-items: center; z-index: 30; padding: 10px;
@@ -103,8 +123,11 @@
             <div id="hud-clock" style="color:#f4d03f;font-weight:bold;">00:00</div>
             <div id="hud-online" style="color:#81c784;">● 1</div>
             <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
+            <div id="hud-status" style="color:#ffcc80;">Trái: 0 | Cúng: 0</div>
         </div>
         <div id="icon-bar-top">
+            <button id="btn-action" class="icon-btn" data-tip="Hái / Cúng [E]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="interactAction()">🍎</button>
             <button id="btn-meditate" class="icon-btn" data-tip="Thiền [Space]"
                 onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMeditate()">🧘</button>
             <button id="btn-music" class="icon-btn muted" data-tip="Nhạc [M]"
@@ -113,7 +136,7 @@
 
         <div id="login-screen">
             <div id="login-box">
-                <h2 class="title-txt">THIỀN VIỆN V7.4</h2>
+                <h2 class="title-txt">THIỀN VIỆN V7.5</h2>
                 <div class="creator-row">
                     <div class="preview-box">
                         <canvas id="previewCanvas" width="92" height="116"></canvas>
@@ -140,10 +163,17 @@
 
         <canvas id="gameCanvas"></canvas>
 
-        <div id="chat-dock">
-            <input type="text" id="chat-input" maxlength="50" placeholder="Chat..." onkeydown="onChatKey(event)">
-            <button class="icon-btn" data-tip="Gửi [Enter]"
-                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="sendChat()">💬</button>
+        <div id="chat-panel">
+            <div id="chat-header">
+                <span>Chat (60s)</span>
+                <button id="chat-toggle" onclick="toggleChatCollapse()" title="Thu gọn / Mở rộng">▾</button>
+            </div>
+            <div id="chat-log"></div>
+            <div id="chat-input-row">
+                <input type="text" id="chat-input" maxlength="60" placeholder="Chat..." onkeydown="onChatKey(event)">
+                <button class="icon-btn" data-tip="Gửi [Enter]"
+                    onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="sendChat()">💬</button>
+            </div>
         </div>
     </div>
 
@@ -157,13 +187,13 @@ const OUTFIT_LIST = [
     { name: 'Áo Hồng', shirt: '#d9829b', vest: '#7a3e52', pants: '#374151', skirt: '#5c3d4e' }
 ];
 
-const MAP_W = 2000;
-const MAP_H = 1700;
-const TEMPLE = { x: 720, y: 270, w: 560, h: 320 };
-const POND = { x: 1420, y: 920, r: 165 };
-const BRIDGE_X = 1000;
-const RIVER_HALF = 56;
-const ROOM_ID = 'thienvien_v74_room';
+// Thu nhỏ ~70% theo tỷ lệ 9:16
+const MAP_W = 1260;
+const MAP_H = 2240;
+const BODHI = { x: 340, y: 740 };
+const GATE  = { x: 630, y: 1120 };
+const POND  = { x: 930, y: 1560, r: 125 };
+const ROOM_ID = 'thienvien_v75_room';
 const MAX_CONNS = 20;
 const MAX_RENDER = 100;
 const IDLE_FRAME_MS = 1000 / 24;
@@ -229,8 +259,8 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Dựng nhân vật chi tiết 42x56 lấy cảm hứng từ mẫu nhân vật đứng & ngồi thiền
-function createDetailedPortraitCanvas(c, isMed, stepFrame) {
+// Dựng nhân vật chi tiết (ảnh mẫu image_a85005.jpg & image_a85020.jpg)
+function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
     const W = 42, H = 56, S = 2;
     const cv = document.createElement('canvas');
     cv.width = W * S;
@@ -238,7 +268,9 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
     const x = cv.getContext('2d');
     x.imageSmoothingEnabled = false;
 
-    const out = OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0];
+    const out = isMonk
+        ? { shirt: '#d97724', vest: '#9c4a12', pants: '#8a3e0d', skirt: '#8a3e0d' }
+        : (OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0]);
     const skin = c.skin;
     const skinShadow = '#c97a54';
     const hair = c.hairColor;
@@ -253,64 +285,53 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
     const headY = isMed ? 12 : 4;
     const headX = 21;
 
-    // Viền đầu + mặt
     px(headX - 8, headY + 3, ink, 16, 15);
     px(headX - 7, headY + 4, skin, 14, 13);
     px(headX - 7, headY + 14, skinShadow, 14, 3);
     px(headX - 8, headY + 8, skinShadow, 1, 5);
     px(headX + 7, headY + 8, skinShadow, 1, 5);
 
-    // Tóc đỉnh đầu theo 5 kiểu
-    const st = c.hairStyle % 5;
+    const st = isMonk ? 4 : (c.hairStyle % 5);
     if (st !== 4) {
         px(headX - 8, headY + 1, ink, 16, 6);
         px(headX - 7, headY + 2, hair, 14, 4);
         if (st === 0) {
-            // Mái ngang
             px(headX - 7, headY + 5, hair, 14, 2);
             px(headX - 5, headY + 2, hairHi, 4, 2);
             px(headX + 2, headY + 2, hairHi, 3, 2);
         } else if (st === 1) {
-            // Rẽ ngôi lệch (giống mẫu)
             px(headX - 6, headY + 2, hairHi, 5, 2);
             px(headX + 1, headY + 3, hairHi, 4, 2);
             px(headX - 6, headY + 5, hair, 6, 2);
             px(headX + 1, headY + 5, hair, 6, 1);
         } else if (st === 2) {
-            // Búi đỉnh
             px(headX - 3, headY - 2, ink, 6, 4);
             px(headX - 2, headY - 1, hairHi, 4, 2);
             px(headX - 7, headY + 5, hair, 14, 1);
         } else if (st === 3) {
-            // Tóc dài hai bên
             px(headX - 9, headY + 4, ink, 3, 24);
             px(headX - 8, headY + 5, hair, 2, 22);
             px(headX + 6, headY + 4, ink, 3, 24);
             px(headX + 7, headY + 5, hair, 2, 22);
         }
     } else {
-        // Đầu trọc có ánh sáng nhẹ trên trán
         px(headX - 5, headY + 4, '#ffffff', 3, 1);
     }
 
-    // Tóc mái / lọn tóc cho nữ
-    if (c.gender === 'female' && st !== 4) {
+    if (!isMonk && c.gender === 'female' && st !== 4) {
         px(headX - 8, headY + 6, ink, 2, 11);
         px(headX - 8, headY + 7, hair, 1, 9);
         px(headX + 6, headY + 6, ink, 2, 11);
         px(headX + 7, headY + 7, hair, 1, 9);
         if (!isMed) {
-            // Búi/đuôi tóc lệch bên phải như ảnh nữ
             px(headX + 7, headY + 14, ink, 5, 7);
             px(headX + 8, headY + 15, hair, 3, 5);
         }
     }
 
-    // Lông mày
     px(headX - 6, headY + 8, ink, 4, 1);
     px(headX + 2, headY + 8, ink, 4, 1);
 
-    // Mắt (mở khi đứng/đi, nhắm khi ngồi thiền)
     if (isMed) {
         px(headX - 6, headY + 10, ink, 4, 1);
         px(headX + 2, headY + 10, ink, 4, 1);
@@ -321,28 +342,21 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
         px(headX + 3, headY + 10, ink, 2, 2);
     }
 
-    // Sống mũi & miệng
     px(headX, headY + 12, skinShadow, 1, 2);
     px(headX - 2, headY + 15, '#c96a6a', 4, 1);
 
-    // Cổ & thân áo
     const bodyY = headY + 18;
     px(headX - 3, bodyY - 1, skinShadow, 6, 2);
 
     if (!isMed) {
-        // Tư thế đứng / bước đi
         const legShift = (stepFrame === 1) ? 2 : (stepFrame === 2 ? -2 : 0);
-
-        // Áo sơ mi + gile
         px(headX - 8, bodyY + 1, ink, 16, 13);
         px(headX - 7, bodyY + 2, out.shirt, 14, 11);
-        // Gile hai bên
         px(headX - 8, bodyY + 2, ink, 5, 11);
         px(headX - 7, bodyY + 2, out.vest, 3, 11);
         px(headX + 3, bodyY + 2, ink, 5, 11);
         px(headX + 4, bodyY + 2, out.vest, 3, 11);
 
-        // Tay hai bên
         px(headX - 11, bodyY + 2, ink, 3, 11);
         px(headX - 10, bodyY + 3, out.shirt, 2, 7);
         px(headX - 10, bodyY + 10, skin, 2, 3);
@@ -351,24 +365,26 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
         px(headX + 8, bodyY + 3, out.shirt, 2, 7);
         px(headX + 8, bodyY + 10, skin, 2, 3);
 
-        if (c.gender === 'female') {
-            // Váy xếp ly
+        if (isMonk) {
+            // Bình bát khất thực
+            px(headX - 4, bodyY + 11, ink, 8, 5);
+            px(headX - 3, bodyY + 12, '#37474f', 6, 3);
+        }
+
+        if (!isMonk && c.gender === 'female') {
             px(headX - 8, bodyY + 14, ink, 16, 9);
             px(headX - 7, bodyY + 15, out.skirt, 14, 7);
             px(headX - 3, bodyY + 15, '#2b3d30', 1, 7);
             px(headX + 2, bodyY + 15, '#2b3d30', 1, 7);
-            // Chân trái & phải
             px(headX - 6, bodyY + 23, ink, 4, 8 + legShift);
             px(headX - 5, bodyY + 23, skin, 2, 7 + legShift);
             px(headX + 2, bodyY + 23, ink, 4, 8 - legShift);
             px(headX + 3, bodyY + 23, skin, 2, 7 - legShift);
-            // Giày
             px(headX - 7, bodyY + 30 + legShift, ink, 5, 3);
             px(headX - 6, bodyY + 31 + legShift, out.vest, 3, 1);
             px(headX + 2, bodyY + 30 - legShift, ink, 5, 3);
             px(headX + 3, bodyY + 31 - legShift, out.vest, 3, 1);
         } else {
-            // Quần dài + giày
             px(headX - 7, bodyY + 14, ink, 14, 17);
             px(headX - 6, bodyY + 15, out.pants, 5, 15);
             px(headX + 1, bodyY + 15, out.pants, 5, 15);
@@ -378,7 +394,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
             px(headX + 2, bodyY + 31 - legShift, out.vest, 4, 1);
         }
     } else {
-        // Tư thế ngồi thiền xếp bằng (giống ảnh thiền)
         px(headX - 8, bodyY + 1, ink, 16, 11);
         px(headX - 7, bodyY + 2, out.shirt, 14, 9);
         px(headX - 8, bodyY + 2, ink, 5, 9);
@@ -386,7 +401,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
         px(headX + 3, bodyY + 2, ink, 5, 9);
         px(headX + 4, bodyY + 2, out.vest, 3, 9);
 
-        // Hai cánh tay đưa ra đặt trên đầu gối
         px(headX - 13, bodyY + 8, ink, 6, 4);
         px(headX - 12, bodyY + 9, out.shirt, 4, 2);
         px(headX - 14, bodyY + 10, skin, 3, 3);
@@ -395,7 +409,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
         px(headX + 8, bodyY + 9, out.shirt, 4, 2);
         px(headX + 11, bodyY + 10, skin, 3, 3);
 
-        // Chân xếp bằng
         px(headX - 12, bodyY + 12, ink, 24, 9);
         px(headX - 11, bodyY + 13, out.pants, 22, 7);
         px(headX - 4, bodyY + 16, ink, 8, 4);
@@ -405,9 +418,100 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame) {
     return cv;
 }
 
+// Sprite nấm to (image_a84fc7.jpg), bụi cỏ (image_a85e8d.png), hoa nhỏ (image_a85b06.png), cây bồ đề (image_a85f05.png)
+function makePixelSprite(rows, pal, scale = 3) {
+    const h = rows.length, w = rows[0].length;
+    const cv = document.createElement('canvas');
+    cv.width = w * scale;
+    cv.height = h * scale;
+    const x = cv.getContext('2d');
+    x.imageSmoothingEnabled = false;
+    for (let r = 0; r < h; r++) {
+        for (let c = 0; c < w; c++) {
+            const ch = rows[r][c];
+            if (ch !== '.' && pal[ch]) {
+                x.fillStyle = pal[ch];
+                x.fillRect(c * scale, r * scale, scale, scale);
+            }
+        }
+    }
+    return cv;
+}
+
+const SPR_MUSHROOM = makePixelSprite([
+    '.....RRRRRRRR.....',
+    '...RRRRWWWWWRRR...',
+    '..RRRWWWRRRRWWWR..',
+    '.RRRRRRRRRRRRRRRR.',
+    '.RRWWWRRRRRRRRWRR.',
+    '.RRRRRRRRWWWRRRRR.',
+    '..RRRRRRRRRRRRRR..',
+    '...KKKKKKKKKKKK...',
+    '.....SSSSSSSS.....',
+    '.....SSWSSWSS.....',
+    '.....SSSSSSSS.....',
+    '......KKKKKK......'
+], { K: '#161616', R: '#e53935', W: '#ffffff', S: '#f5d0a9' }, 4);
+
+const SPR_BUSH = makePixelSprite([
+    '....GGGG....GGGG....',
+    '..GGLLLLGGGGLLLLGG..',
+    '.GGLLLLLLLLLLLLLLGG.',
+    '.GGddddLLLLLLLLddGG.',
+    '..GGGGddddddddGGGG..',
+    '...KKKKKKKKKKKKKK...'
+], { K: '#142214', G: '#2e7d32', L: '#7cb342', d: '#1b5e20' }, 3);
+
+const SPR_FLOWERS = [
+    makePixelSprite([
+        '..PPPP..',
+        '.PppppP.',
+        '..PYYP..',
+        '...GG...',
+        '..GGGG..',
+        '...GG...'
+    ], { P: '#ce93d8', p: '#f3e5f5', Y: '#ffeb3b', G: '#2e7d32' }, 2),
+    makePixelSprite([
+        '...BB...',
+        '..BBBB..',
+        '...YG...',
+        '..GGGG..',
+        '...GG...'
+    ], { B: '#1e88e5', Y: '#ffeb3b', G: '#2e7d32' }, 2),
+    makePixelSprite([
+        '...RR...',
+        '..RRRR..',
+        '...GG...',
+        '..GGGG..',
+        '...GG...'
+    ], { R: '#e53935', G: '#2e7d32' }, 2),
+    makePixelSprite([
+        '...OO...',
+        '..OOOO..',
+        '...GG...',
+        '..GGGG..',
+        '...GG...'
+    ], { O: '#fb8c00', G: '#2e7d32' }, 2)
+];
+
+const SPR_BODHI = makePixelSprite([
+    '........GGGGGGGG........',
+    '......GGLLLLLLLLGG......',
+    '....GGLLLLYYYYLLLLGG....',
+    '...GGLLLLLLLLLLLLLLGG...',
+    '..GGddddLLLLLLLLddddGG..',
+    '..GGddddddddddddddddGG..',
+    '...GGGGddddddddddddGG...',
+    '.....KKKKKKKKKKKKKK.....',
+    '.........TTTTTT.........',
+    '.........TTTTTT.........',
+    '........TTTTTTTT........',
+    '.......TTTTTTTTTT.......'
+], { K: '#151c14', G: '#2e7d32', L: '#66bb6a', Y: '#dce775', d: '#1b5e20', T: '#6d4c41' }, 6);
+
 const charCache = new Map();
-function getCharFrames(name, c) {
-    const key = `${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.outfitId}`;
+function getCharFrames(name, c, isMonk = false) {
+    const key = `${isMonk ? 'MONK' : 'USR'}|${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.outfitId}`;
     if (charCache.has(key)) return charCache.get(key);
     if (charCache.size > 600) charCache.delete(charCache.keys().next().value);
 
@@ -419,7 +523,7 @@ function getCharFrames(name, c) {
     ];
 
     const frames = poses.map((p, idx) => {
-        const spr = createDetailedPortraitCanvas(c, p.med, p.step);
+        const spr = createDetailedPortraitCanvas(c, p.med, p.step, isMonk);
         const cv = document.createElement('canvas');
         cv.width = 144;
         cv.height = 132;
@@ -438,7 +542,7 @@ function getCharFrames(name, c) {
         if (name) {
             cx.font = 'bold 10px "Courier New", monospace';
             cx.textAlign = 'center';
-            cx.fillStyle = '#ffeb3b';
+            cx.fillStyle = isMonk ? '#ffe082' : '#ffeb3b';
             cx.fillText(name, 72, Math.max(12, topY - 5));
         }
         return cv;
@@ -448,42 +552,125 @@ function getCharFrames(name, c) {
     return frames;
 }
 
-function drawHeadHalo(ctx, cx, cy, t) {
-    const pulse = 0.94 + Math.sin(t * 0.004) * 0.06;
-    const rOut = 28 * pulse;
-    const rIn = 20 * pulse;
+// Hào quang thiền phát sáng từ đầu làm trung tâm, biến đổi theo phút ngồi thiền + số lần cúng dường
+function drawMeditationAura(ctx, cx, cy, medMinutes, offeringCount, t) {
+    const offerBoost = Math.min(offeringCount * 4, 24);
+    const pulse = 0.95 + Math.sin(t * 0.004) * 0.05;
 
-    ctx.strokeStyle = '#ffca28';
-    ctx.lineWidth = 3.5;
+    let baseR = 24;
+    let rings = [];
+
+    if (medMinutes >= 60) {
+        baseR = 54 + offerBoost;
+        rings = [
+            { r: baseR,        col: 'rgba(148, 0, 211, 0.35)', w: 6 },
+            { r: baseR * 0.85, col: 'rgba(75, 0, 130, 0.45)',  w: 6 },
+            { r: baseR * 0.72, col: 'rgba(0, 128, 255, 0.55)', w: 6 },
+            { r: baseR * 0.58, col: 'rgba(0, 230, 118, 0.65)', w: 6 },
+            { r: baseR * 0.44, col: 'rgba(255, 235, 59, 0.8)', w: 6 },
+            { r: baseR * 0.30, col: 'rgba(255, 145, 0, 0.9)',  w: 6 },
+            { r: baseR * 0.16, col: 'rgba(255, 255, 224, 1)',  w: 7 }
+        ];
+    } else if (medMinutes >= 50) {
+        baseR = 46 + offerBoost;
+        rings = [
+            { r: baseR,        col: 'rgba(41, 182, 246, 0.75)', w: 5 },
+            { r: baseR * 0.76, col: 'rgba(255, 167, 38, 0.75)', w: 5 },
+            { r: baseR * 0.52, col: 'rgba(255, 238, 88, 0.88)', w: 5 },
+            { r: baseR * 0.25, col: 'rgba(255, 255, 220, 1)',    w: 5 }
+        ];
+    } else if (medMinutes >= 30) {
+        baseR = 39 + offerBoost;
+        rings = [
+            { r: baseR,        col: 'rgba(255, 138, 0, 0.65)',  w: 5 },
+            { r: baseR * 0.68, col: 'rgba(212, 225, 87, 0.82)', w: 5 },
+            { r: baseR * 0.34, col: 'rgba(255, 253, 180, 0.98)',w: 5 }
+        ];
+    } else if (medMinutes >= 20) {
+        baseR = 33 + offerBoost;
+        rings = [
+            { r: baseR,        col: 'rgba(205, 220, 57, 0.65)', w: 4 },
+            { r: baseR * 0.58, col: 'rgba(255, 245, 157, 0.9)', w: 4 }
+        ];
+    } else if (medMinutes >= 10) {
+        baseR = 28 + offerBoost;
+        rings = [
+            { r: baseR,        col: 'rgba(255, 213, 79, 0.6)',  w: 3.5 },
+            { r: baseR * 0.52, col: 'rgba(255, 252, 200, 0.85)',w: 3 }
+        ];
+    } else {
+        baseR = 24 + offerBoost;
+        rings = [
+            { r: baseR,        col: 'rgba(255, 241, 118, 0.45)',w: 2.5 }
+        ];
+    }
+
+    for (let i = 0; i < rings.length; i++) {
+        const rg = rings[i];
+        ctx.strokeStyle = rg.col;
+        ctx.lineWidth = rg.w;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rg.r * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    // Tâm sáng nhất ngay trên đầu
+    ctx.fillStyle = 'rgba(255, 255, 240, 0.85)';
     ctx.beginPath();
-    ctx.arc(cx, cy, rOut, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(cx, cy, 8 * pulse, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.strokeStyle = '#fff59d';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rIn, 0, Math.PI * 2);
-    ctx.stroke();
-
-    for (let i = 0; i < 6; i++) {
-        const ang = (i / 6) * Math.PI * 2 + t * 0.0012;
-        const px = Math.round(cx + Math.cos(ang) * (rOut + 5));
-        const py = Math.round(cy + Math.sin(ang) * (rOut + 5));
-        ctx.fillStyle = (i % 2 === 0) ? '#fff59d' : '#ffb300';
-        ctx.fillRect(px - 2, py - 2, 4, 4);
+    // Trên 60 phút: hoa lá mọc đung đưa + chim & bướm bay chơi đùa xung quanh
+    if (medMinutes >= 60) {
+        const sway = Math.sin(t * 0.005) * 4;
+        for (let i = 0; i < 8; i++) {
+            const ang = (i / 8) * Math.PI * 2;
+            const hx = cx + Math.cos(ang) * (baseR + 14);
+            const hy = cy + Math.sin(ang) * (baseR + 14);
+            ctx.fillStyle = '#66bb6a';
+            ctx.fillRect(Math.round(hx - 2 + sway * 0.5), Math.round(hy), 4, 6);
+            ctx.fillStyle = (i % 2 === 0) ? '#ff80ab' : '#ffeb3b';
+            ctx.fillRect(Math.round(hx - 3 + sway), Math.round(hy - 4), 6, 4);
+        }
+        // Bướm & chim nhỏ bay lượn quanh
+        for (let b = 0; b < 4; b++) {
+            const ba = t * 0.0018 + b * 1.57;
+            const bx = cx + Math.cos(ba) * (baseR + 24);
+            const by = cy + Math.sin(ba * 1.3) * (baseR + 18);
+            const wing = Math.sin(t * 0.02 + b) > 0 ? 4 : 1;
+            ctx.fillStyle = b < 2 ? '#fff59d' : '#80deea';
+            ctx.fillRect(Math.round(bx - wing), Math.round(by - 2), wing * 2, 4);
+        }
     }
 }
 
 function drawPerson(ctx, e, t) {
     const rx = Math.round(e.x), ry = Math.round(e.y);
-    const frames = getCharFrames(e.name, e.cfg);
+    const frames = getCharFrames(e.name, e.cfg, !!e.isMonk);
     const idx = e.med ? 3 : (e.walk > 0.01 ? (Math.sin(e.walk) >= 0 ? 1 : 2) : 0);
-    if (e.med) drawHeadHalo(ctx, rx, ry - 86, t);
+
+    const medMins = e.med ? ((e.medElapsedMs || 0) / 60000) : 0;
+    const offers = e.offerings || 0;
+    if (e.med || offers > 0) {
+        drawMeditationAura(ctx, rx, ry - 92, e.med ? medMins : (offers >= 5 ? 60 : 15), offers, t);
+    }
+
     ctx.drawImage(frames[idx], rx - 72, ry - 118);
+
+    // Đang cầm trái cây trên tay
+    if (e.holdingFruit) {
+        ctx.fillStyle = '#ff5252';
+        ctx.beginPath();
+        ctx.arc(rx + 20, ry - 52, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#66bb6a';
+        ctx.fillRect(rx + 19, ry - 60, 3, 3);
+    }
+
     if (e.chat) {
         ctx.font = '11px "Courier New", monospace';
         ctx.textAlign = 'center';
-        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 134;
+        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 136;
         ctx.fillStyle = '#fff';
         ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 18);
         ctx.fillStyle = '#111';
@@ -497,7 +684,7 @@ function renderPreview() {
     const px = pc.getContext('2d');
     px.imageSmoothingEnabled = false;
     px.clearRect(0, 0, pc.width, pc.height);
-    const spr = createDetailedPortraitCanvas(cfg, false, 0);
+    const spr = createDetailedPortraitCanvas(cfg, false, 0, false);
     px.drawImage(spr, Math.round(46 - spr.width / 2), Math.round(58 - spr.height / 2));
 }
 
@@ -530,24 +717,27 @@ function setGender(g, btn) {
     renderPreview();
 }
 
-function getRiverY(x) { return 1240 + Math.sin(x * 0.0038) * 52; }
-const LANTERNS = [
-    { x: 920, y: 630 }, { x: 1080, y: 630 }, { x: 910, y: 790 }, { x: 1090, y: 790 },
-    { x: 900, y: 1030 }, { x: 1100, y: 1030 }, { x: 920, y: 1380 }, { x: 1080, y: 1380 }
+// Cây nấm to cao hơn người, khóm bụi cỏ, hoa nhỏ ngẫu nhiên, đá cuội ven hồ
+const MUSHROOMS = [
+    { x: 240, y: 1220 }, { x: 960, y: 780 }, { x: 260, y: 1840 }, { x: 980, y: 1980 }
 ];
-const TREES = [
-    { x: 220, y: 310, col: '#f48fb1' }, { x: 580, y: 330, col: '#f48fb1' }, { x: 1420, y: 290, col: '#f48fb1' },
-    { x: 200, y: 590, col: '#fbc02d' }, { x: 660, y: 620, col: '#fbc02d' }, { x: 1780, y: 440, col: '#fbc02d' },
-    { x: 160, y: 880, col: '#2e7d32' }, { x: 450, y: 960, col: '#2e7d32' }, { x: 1780, y: 880, col: '#2e7d32' },
-    { x: 280, y: 1520, col: '#f48fb1' }, { x: 650, y: 1560, col: '#fbc02d' }, { x: 1420, y: 1520, col: '#2e7d32' }
+const BUSHES = [
+    { x: 180, y: 980 }, { x: 520, y: 880 }, { x: 860, y: 1020 },
+    { x: 220, y: 1460 }, { x: 540, y: 1740 }, { x: 1060, y: 1240 }
 ];
-const FLOWERS = [];
-for (let i = 0; i < 65; i++) {
-    FLOWERS.push({ x: 80 + ((i * 313) % (MAP_W - 160)), y: 250 + ((i * 479) % (MAP_H - 290)) });
+const RANDOM_FLOWERS = [];
+for (let i = 0; i < 85; i++) {
+    const fx = 60 + ((i * 293 + (i % 7) * 53) % (MAP_W - 120));
+    const fy = 330 + ((i * 431 + (i % 11) * 71) % (MAP_H - 380));
+    RANDOM_FLOWERS.push({ x: fx, y: fy, kind: i % SPR_FLOWERS.length });
 }
-const KOI_LIST = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff'].map((col, idx) => ({
-    col, ang: idx * 1.0, rad: 38 + idx * 15, spd: 0.00018 + (idx % 3) * 0.00005
-}));
+const POND_PEBBLES = [
+    { x: POND.x - 118, y: POND.y + 18, rx: 14, ry: 9 },
+    { x: POND.x - 75,  y: POND.y + 92, rx: 18, ry: 11 },
+    { x: POND.x + 12,  y: POND.y + 128,rx: 15, ry: 9 },
+    { x: POND.x + 88,  y: POND.y + 84, rx: 17, ry: 10 },
+    { x: POND.x + 124, y: POND.y + 12, rx: 13, ry: 8 }
+];
 
 const staticCanvas = document.createElement('canvas');
 staticCanvas.width = MAP_W;
@@ -560,109 +750,298 @@ function buildMap(night) {
     cachedNight = night;
     const s = staticCtx;
 
+    // Nền cỏ chi tiết phong cách pixel (image_a85eaa.png)
     const tile = 32;
-    for (let y = 210; y < MAP_H; y += tile) {
+    for (let y = 300; y < MAP_H; y += tile) {
         for (let x = 0; x < MAP_W; x += tile) {
-            const v = Math.sin(x * 0.0045) + Math.cos(y * 0.0045);
             const alt = ((x / tile) + (y / tile)) % 2 === 0;
             s.fillStyle = night
-                ? (v > 0.3 ? (alt ? '#192517' : '#152013') : (alt ? '#142916' : '#102212'))
-                : (v > 0.3 ? (alt ? '#4c6638' : '#435b31') : (alt ? '#2e7d32' : '#266e2a'));
+                ? (alt ? '#172617' : '#132013')
+                : (alt ? '#6ea644' : '#63993b');
             s.fillRect(x, y, tile, tile);
+            s.fillStyle = night ? '#233822' : '#85bd55';
+            s.fillRect(x + 6, y + 8, 3, 2);
+            s.fillRect(x + 20, y + 22, 3, 2);
         }
     }
 
-    s.fillStyle = night ? '#0d1829' : '#95cbf7';
-    s.fillRect(0, 0, MAP_W, 220);
-
-    s.fillStyle = night ? '#1b2b3d' : '#6c8e99';
-    s.beginPath();
-    s.moveTo(0, 220); s.lineTo(0, 125); s.lineTo(300, 58); s.lineTo(680, 132);
-    s.lineTo(1020, 48); s.lineTo(1420, 118); s.lineTo(1760, 56); s.lineTo(MAP_W, 125);
-    s.lineTo(MAP_W, 220); s.closePath(); s.fill();
-
-    s.strokeStyle = night ? '#4a382e' : '#9e6b4b';
-    s.lineWidth = 64;
-    s.beginPath();
-    s.moveTo(1000, 590);
-    for (let y = 590; y <= 1580; y += 24) {
-        const wx = (y > 1150 && y < 1330) ? 0 : Math.sin((y - 590) * 0.008) * 26;
-        s.lineTo(1000 + wx, y);
+    // Mép trên: núi non kèm mây mờ sương ảo + mặt trời / trăng sao (image_a8c8a6.png)
+    const skyGrad = s.createLinearGradient(0, 0, 0, 320);
+    if (night) {
+        skyGrad.addColorStop(0, '#070d1c');
+        skyGrad.addColorStop(1, '#1a2c47');
+    } else {
+        skyGrad.addColorStop(0, '#4fa3e3');
+        skyGrad.addColorStop(1, '#c9ecff');
     }
-    s.stroke();
+    s.fillStyle = skyGrad;
+    s.fillRect(0, 0, MAP_W, 320);
 
-    s.fillStyle = night ? '#143f59' : '#4682be';
+    if (night) {
+        s.fillStyle = '#fff9c4';
+        s.beginPath(); s.arc(1030, 72, 22, 0, Math.PI * 2); s.fill();
+        s.fillStyle = '#ffffff';
+        for (let i = 0; i < 24; i++) {
+            s.fillRect((i * 79) % MAP_W, 18 + ((i * 37) % 110), 2, 2);
+        }
+    } else {
+        s.fillStyle = '#ffee58';
+        s.beginPath(); s.arc(1030, 76, 28, 0, Math.PI * 2); s.fill();
+    }
+
+    // Dãy núi xa & gần
+    s.fillStyle = night ? '#1b314a' : '#5e8aa8';
     s.beginPath();
-    s.moveTo(0, getRiverY(0) - RIVER_HALF);
-    for (let x = 0; x <= MAP_W; x += 28) s.lineTo(x, getRiverY(x) - RIVER_HALF);
-    for (let x = MAP_W; x >= 0; x -= 28) s.lineTo(x, getRiverY(x) + RIVER_HALF);
+    s.moveTo(0, 310); s.lineTo(180, 130); s.lineTo(420, 230); s.lineTo(680, 110);
+    s.lineTo(960, 225); s.lineTo(1180, 145); s.lineTo(MAP_W, 240); s.lineTo(MAP_W, 310);
     s.closePath(); s.fill();
 
-    const by = getRiverY(BRIDGE_X);
-    s.fillStyle = night ? '#3e2723' : '#6d4c41';
-    s.fillRect(BRIDGE_X - 48, by - RIVER_HALF - 8, 96, RIVER_HALF * 2 + 16);
+    s.fillStyle = night ? '#14263b' : '#3f6c58';
+    s.beginPath();
+    s.moveTo(0, 320); s.lineTo(250, 195); s.lineTo(540, 285); s.lineTo(840, 185);
+    s.lineTo(1110, 275); s.lineTo(MAP_W, 205); s.lineTo(MAP_W, 320);
+    s.closePath(); s.fill();
 
-    s.save();
-    s.translate(POND.x, POND.y);
-    s.fillStyle = night ? '#263228' : '#68785a';
-    s.beginPath(); s.arc(0, 0, POND.r + 8, 0, Math.PI, false); s.closePath(); s.fill();
-    s.fillStyle = night ? '#123c54' : '#3a7bb8';
-    s.beginPath(); s.arc(0, 0, POND.r, 0, Math.PI, false); s.closePath(); s.fill();
-    s.restore();
+    // Mây sương mờ cuốn quanh núi
+    s.fillStyle = night ? 'rgba(180, 210, 240, 0.16)' : 'rgba(255, 255, 255, 0.52)';
+    for (let i = 0; i < 9; i++) {
+        const mx = 90 + i * 140;
+        const my = 175 + (i % 3) * 34;
+        s.beginPath();
+        s.ellipse(mx, my, 92, 22, 0, 0, Math.PI * 2);
+        s.fill();
+    }
 
-    FLOWERS.forEach(f => {
-        if (Math.abs(f.y - getRiverY(f.x)) < RIVER_HALF + 16) return;
-        if (f.y >= POND.y - 10 && Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 16) return;
-        if (f.x > TEMPLE.x - 14 && f.x < TEMPLE.x + TEMPLE.w + 14 && f.y > TEMPLE.y - 14 && f.y < TEMPLE.y + TEMPLE.h + 14) return;
-        s.fillStyle = '#ea80fc'; s.fillRect(f.x - 3, f.y - 2, 6, 4);
-        s.fillStyle = '#ffea00'; s.fillRect(f.x - 1, f.y - 1, 2, 2);
+    // Hoa nhỏ rải rác khắp map không theo quy luật
+    RANDOM_FLOWERS.forEach(f => {
+        if (Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 24) return;
+        s.drawImage(SPR_FLOWERS[f.kind], f.x, f.y);
     });
 
-    s.fillStyle = night ? '#4a3d31' : '#d7bfa0';
-    s.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
-    s.strokeStyle = '#111'; s.lineWidth = 3;
-    s.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
+    // Bể cá + đá cuội to ven hồ
+    s.fillStyle = night ? '#37474f' : '#8d8476';
+    s.beginPath(); s.ellipse(POND.x, POND.y, POND.r + 10, POND.r * 0.72 + 10, 0, 0, Math.PI * 2); s.fill();
+    s.fillStyle = night ? '#123a54' : '#3b82c4';
+    s.beginPath(); s.ellipse(POND.x, POND.y, POND.r, POND.r * 0.72, 0, 0, Math.PI * 2); s.fill();
 
-    const cx = TEMPLE.x + TEMPLE.w / 2;
-    const cy = TEMPLE.y + 125;
-    s.fillStyle = '#f39c12';
-    s.fillRect(cx - 42, cy - 8, 84, 18);
-    s.fillRect(cx - 26, cy - 42, 52, 34);
-    s.fillRect(cx - 16, cy - 72, 32, 30);
-    s.fillStyle = '#1c2833';
-    s.fillRect(cx - 16, cy - 78, 32, 7);
-
-    LANTERNS.forEach(l => {
-        s.fillStyle = night ? '#ffea00' : '#78909c';
-        s.fillRect(l.x - 6, l.y - 24, 12, 12);
-        s.fillStyle = '#455a64';
-        s.fillRect(l.x - 4, l.y - 12, 8, 12);
+    POND_PEBBLES.forEach(pb => {
+        s.fillStyle = '#263238';
+        s.beginPath(); s.ellipse(pb.x + 2, pb.y + 3, pb.rx, pb.ry, 0, 0, Math.PI * 2); s.fill();
+        s.fillStyle = night ? '#546e7a' : '#90a4ae';
+        s.beginPath(); s.ellipse(pb.x, pb.y, pb.rx, pb.ry, 0, 0, Math.PI * 2); s.fill();
     });
 
-    TREES.forEach(t => {
-        s.fillStyle = 'rgba(0,0,0,0.35)';
-        s.beginPath(); s.ellipse(t.x, t.y + 4, 24, 8, 0, 0, Math.PI * 2); s.fill();
-        s.fillStyle = '#4e342e';
-        s.fillRect(t.x - 5, t.y - 18, 10, 20);
-        s.fillStyle = t.col;
-        s.beginPath(); s.arc(t.x, t.y - 32, 24, 0, Math.PI * 2); s.fill();
+    // Khóm bụi cỏ
+    BUSHES.forEach(b => {
+        s.drawImage(SPR_BUSH, Math.round(b.x - SPR_BUSH.width / 2), Math.round(b.y - SPR_BUSH.height + 6));
     });
+
+    // Cây nấm to cao hơn người
+    MUSHROOMS.forEach(m => {
+        s.drawImage(SPR_MUSHROOM, Math.round(m.x - SPR_MUSHROOM.width / 2), Math.round(m.y - SPR_MUSHROOM.height + 6));
+    });
+
+    // 1 cây bồ đề to
+    s.drawImage(SPR_BODHI, Math.round(BODHI.x - SPR_BODHI.width / 2), Math.round(BODHI.y - SPR_BODHI.height + 12));
+
+    // Cổng tam quan ở giữa map (hiện tại empty)
+    s.fillStyle = '#6d4c41';
+    s.fillRect(GATE.x - 56, GATE.y - 76, 12, 76);
+    s.fillRect(GATE.x + 44, GATE.y - 76, 12, 76);
+    s.fillRect(GATE.x - 24, GATE.y - 54, 8, 54);
+    s.fillRect(GATE.x + 16, GATE.y - 54, 8, 54);
+    s.fillStyle = '#c62828';
+    s.fillRect(GATE.x - 68, GATE.y - 84, 136, 12);
+    s.fillRect(GATE.x - 34, GATE.y - 62, 68, 9);
 }
 
-function drawPondKoi(ctx, time) {
-    ctx.save();
-    ctx.translate(POND.x, POND.y);
-    KOI_LIST.forEach((f, i) => {
-        const t = time * f.spd + f.ang;
-        const fx = Math.round(Math.cos(t) * (f.rad * 0.85));
-        const fy = Math.round(22 + Math.abs(Math.sin(t * 0.65)) * (f.rad * 0.62));
-        ctx.fillStyle = f.col;
-        ctx.fillRect(fx - 5, fy - 2, 10, 4);
-        const wag = Math.round(Math.sin(time * 0.005 + i) * 2);
-        ctx.fillRect(fx - 8, fy - 2 + wag, 3, 4);
-    });
-    ctx.restore();
+// Hiệu ứng động trên map: ánh sáng cây bồ đề, cổng tam quan phát sáng, cá koi, bướm bụi cỏ, sư khất thực & chư thiên
+let fruitSpawned = false;
+const FRUITS = [
+    { x: BODHI.x - 42, y: BODHI.y - 58, taken: false },
+    { x: BODHI.x + 38, y: BODHI.y - 64, taken: false },
+    { x: BODHI.x - 12, y: BODHI.y - 84, taken: false },
+    { x: BODHI.x + 24, y: BODHI.y - 34, taken: false }
+];
+
+let monk = null;
+let monkSpawnedOnce = false;
+let celestialList = [];
+let myHoldingFruit = false;
+let myOfferings = 0;
+
+function updateMonkSchedule(vnHour) {
+    const inAlmsWindow = (vnHour >= 6 && vnHour < 11);
+    if (inAlmsWindow && !monk && !monkSpawnedOnce) {
+        monkSpawnedOnce = true;
+        const fromLeft = Math.random() < 0.5;
+        const startX = fromLeft ? 40 : MAP_W - 40;
+        const endX = fromLeft ? MAP_W - 40 : 40;
+        const yPos = 980 + Math.floor(Math.random() * 420);
+        monk = {
+            name: 'Vị Sư Khất Thực',
+            cfg: { gender: 'male', skin: SKIN_LIST[1], hairStyle: 4, hairColor: '#1d2428', hairShade: '#3d4c54', outfitId: 0 },
+            isMonk: true,
+            x: startX, y: yPos, endX, walk: 0, med: false, chat: 'A Di Đà Phật'
+        };
+        fruitSpawned = true;
+        FRUITS.forEach(f => { f.taken = false; });
+        celestialList = [0, 1, 2].map(i => ({
+            ang: i * 2.09,
+            petalProgress: 0,
+            tossed: false
+        }));
+    } else if (!inAlmsWindow && monk) {
+        monk = null;
+        fruitSpawned = false;
+        celestialList = [];
+    }
 }
+
+function drawDynamicWorld(ctx, now) {
+    // 1. Cây bồ đề phát sáng nhẹ tỏa xung quanh
+    const bPulse = 0.85 + Math.sin(now * 0.0025) * 0.15;
+    const bGrad = ctx.createRadialGradient(BODHI.x, BODHI.y - 48, 12, BODHI.x, BODHI.y - 48, 130 * bPulse);
+    bGrad.addColorStop(0, 'rgba(255, 245, 157, 0.36)');
+    bGrad.addColorStop(1, 'rgba(255, 245, 157, 0)');
+    ctx.fillStyle = bGrad;
+    ctx.beginPath(); ctx.arc(BODHI.x, BODHI.y - 48, 130 * bPulse, 0, Math.PI * 2); ctx.fill();
+
+    // 2. Cổng tam quan phát sáng ở giữa map (empty - chưa chuyển map)
+    const gPulse = 0.8 + Math.sin(now * 0.003) * 0.2;
+    ctx.strokeStyle = `rgba(255, 224, 130, ${0.75 * gPulse})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(GATE.x - 16, GATE.y - 48, 32, 48);
+
+    // 3. Cá Koi trong bể
+    for (let i = 0; i < 5; i++) {
+        const ang = now * 0.0005 + i * 1.25;
+        const kx = POND.x + Math.cos(ang) * 55;
+        const ky = POND.y + Math.sin(ang) * 35;
+        ctx.fillStyle = i % 2 === 0 ? '#ff6d00' : '#ffffff';
+        ctx.fillRect(Math.round(kx - 4), Math.round(ky - 2), 8, 4);
+    }
+
+    // 4. Bướm bay xung quanh bụi cỏ sau mỗi 1 phút (mỗi chu kỳ 60s có 15s bướm bay quanh)
+    const secInMin = (now / 1000) % 60;
+    if (secInMin < 15) {
+        BUSHES.forEach((b, idx) => {
+            const ba = now * 0.004 + idx;
+            const bx = b.x + Math.cos(ba) * 24;
+            const by = b.y - 16 + Math.sin(ba * 1.7) * 12;
+            ctx.fillStyle = idx % 2 === 0 ? '#fff176' : '#81d4fa';
+            ctx.fillRect(Math.round(bx - 3), Math.round(by - 2), 6, 4);
+        });
+    }
+
+    // 5. Trái cây mọc trên cây khi sư xuất hiện
+    if (fruitSpawned) {
+        FRUITS.forEach(fr => {
+            if (!fr.taken) {
+                ctx.fillStyle = '#ff5252';
+                ctx.beginPath(); ctx.arc(fr.x, fr.y, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#66bb6a';
+                ctx.fillRect(fr.x - 1, fr.y - 8, 3, 3);
+            }
+        });
+    }
+}
+
+function updateAndDrawMonkAndCelestials(ctx, now) {
+    if (!monk) return;
+    const dir = monk.endX > monk.x ? 1 : -1;
+    monk.x += dir * 0.65;
+    monk.walk += 0.14;
+
+    drawPerson(ctx, monk, now);
+
+    // 3 chư thiên bé như đom đóm bay quanh sư, tung hoa (tung xong hoa mất)
+    for (let i = 0; i < celestialList.length; i++) {
+        const c = celestialList[i];
+        const ca = now * 0.002 + c.ang;
+        const cx = monk.x + Math.cos(ca) * 38;
+        const cy = monk.y - 78 + Math.sin(ca * 1.4) * 18;
+
+        ctx.fillStyle = '#fff59d';
+        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+
+        if (!c.tossed) {
+            c.petalProgress += 0.015;
+            const py = cy + c.petalProgress * 28;
+            const alpha = Math.max(0, 1 - c.petalProgress);
+            ctx.fillStyle = `rgba(255, 128, 171, ${alpha})`;
+            ctx.fillRect(Math.round(cx - 3), Math.round(py), 5, 4);
+            if (c.petalProgress >= 1) c.tossed = true;
+        }
+    }
+
+    // Đi hết mép map thì sư và chư thiên biến mất
+    if ((dir > 0 && monk.x >= monk.endX) || (dir < 0 && monk.x <= monk.endX)) {
+        monk = null;
+        fruitSpawned = false;
+        celestialList = [];
+    }
+}
+
+function updateStatusHud() {
+    const el = document.getElementById('hud-status');
+    if (el) el.textContent = `Trái: ${myHoldingFruit ? 1 : 0} | Cúng: ${myOfferings}`;
+}
+
+function interactAction() {
+    if (!myHoldingFruit && fruitSpawned) {
+        for (const fr of FRUITS) {
+            if (!fr.taken && Math.hypot(myX - fr.x, myY - fr.y) < 75) {
+                fr.taken = true;
+                myHoldingFruit = true;
+                pushChatLine('Hệ thống', 'Bạn đã hái trái cây, hãy mang tới cúng dường vị sư.');
+                updateStatusHud();
+                return;
+            }
+        }
+    }
+    if (myHoldingFruit && monk && Math.hypot(myX - monk.x, myY - monk.y) < 75) {
+        myHoldingFruit = false;
+        myOfferings += 1;
+        // Reset chư thiên tung hoa mỗi lần cúng dường
+        celestialList = [0, 1, 2].map(i => ({ ang: i * 2.09, petalProgress: 0, tossed: false }));
+        pushChatLine('Hệ thống', `Bạn đã cúng dường (tổng ${myOfferings} lần)!`);
+        updateStatusHud();
+    }
+}
+
+// Khung chat đen mờ trong suốt 40%, lưu ~60s, có nút co giãn mũi tên & vuốt cuộn
+const chatLogEl = document.getElementById('chat-log');
+const chatEntries = [];
+
+function renderChatLog() {
+    const now = Date.now();
+    while (chatEntries.length && now - chatEntries[0].ts > 60000) {
+        chatEntries.shift();
+    }
+    chatLogEl.innerHTML = chatEntries.map(item =>
+        `<div class="chat-line"><span class="chat-name">${escapeHtml(item.who)}:</span> ${escapeHtml(item.text)}</div>`
+    ).join('');
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+}
+
+function pushChatLine(who, text) {
+    chatEntries.push({ who, text, ts: Date.now() });
+    renderChatLog();
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));
+}
+
+function toggleChatCollapse() {
+    const panel = document.getElementById('chat-panel');
+    const btn = document.getElementById('chat-toggle');
+    const col = panel.classList.toggle('collapsed');
+    btn.textContent = col ? '▴' : '▾';
+}
+
+setInterval(renderChatLog, 5000);
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -675,8 +1054,8 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-let myName = 'Hành Giả', myX = 1000, myY = 900, tx = 1000, ty = 900;
-let isMed = false, walk = 0, chatMsg = '', chatTicks = 0;
+let myName = 'Hành Giả', myX = 630, myY = 1260, tx = 630, ty = 1260;
+let isMed = false, medStartMs = 0, medElapsedMs = 0, walk = 0, chatMsg = '', chatTicks = 0;
 const keys = {};
 
 window.addEventListener('keydown', e => {
@@ -684,6 +1063,7 @@ window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase(); keys[k] = true;
     if (e.code === 'Space') { e.preventDefault(); toggleMeditate(); }
     else if (k === 'm') toggleMusic();
+    else if (k === 'e') interactAction();
     else if (e.key === 'Enter') document.getElementById('chat-input').focus();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -698,13 +1078,22 @@ canvas.addEventListener('pointerdown', e => {
 function toggleMeditate() {
     isMed = !isMed;
     document.getElementById('btn-meditate').classList.toggle('active', isMed);
-    if (isMed) { tx = myX; ty = myY; }
+    if (isMed) {
+        tx = myX; ty = myY;
+        medStartMs = performance.now();
+    } else {
+        medElapsedMs = 0;
+    }
 }
 
 function sendChat() {
     const inp = document.getElementById('chat-input');
     const v = inp.value.trim();
-    if (v) { chatMsg = v; chatTicks = 300; }
+    if (v) {
+        chatMsg = v;
+        chatTicks = 300;
+        pushChatLine(myName, v);
+    }
     inp.value = ''; inp.blur();
 }
 function onChatKey(e) { if (e.key === 'Enter') sendChat(); }
@@ -715,7 +1104,7 @@ const conns = {}, remotes = {}, profiles = {}, seen = new Set();
 function enterGame() {
     myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('chat-dock').style.display = 'flex';
+    document.getElementById('chat-panel').style.display = 'flex';
     startP2P();
 }
 
@@ -771,6 +1160,7 @@ function bindConn(conn) {
             } else {
                 rp.tx = d.x; rp.ty = d.y; rp.med = !!(d.f & 1); rp.chat = d.ch || ''; rp.ts = Date.now();
             }
+            if (d.ch) pushChatLine(rp.name, d.ch);
             if ((d.h || 0) < 3) {
                 for (const k in conns) if (k !== conn.peer && conns[k] && conns[k].open) conns[k].send(Object.assign({}, d, { h: (d.h || 0) + 1 }));
             }
@@ -801,8 +1191,10 @@ function startSync() {
     }, 250);
 }
 
-function stepSim() {
-    if (!isMed) {
+function stepSim(now) {
+    if (isMed) {
+        medElapsedMs = now - medStartMs;
+    } else {
         let vx = 0, vy = 0; const spd = 3.5;
         if (keys['w'] || keys['arrowup']) vy -= 1;
         if (keys['s'] || keys['arrowdown']) vy += 1;
@@ -811,7 +1203,7 @@ function stepSim() {
         if (vx || vy) {
             const l = Math.hypot(vx, vy);
             myX = Math.max(30, Math.min(MAP_W - 30, myX + (vx / l) * spd));
-            myY = Math.max(230, Math.min(MAP_H - 30, myY + (vy / l) * spd));
+            myY = Math.max(325, Math.min(MAP_H - 30, myY + (vy / l) * spd));
             tx = myX; ty = myY; walk += 0.25;
         } else {
             const dx = tx - myX, dy = ty - myY, d = Math.hypot(dx, dy);
@@ -849,7 +1241,8 @@ function loop(now) {
     document.getElementById('hud-clock').textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
     const night = (h >= 18 || h < 6);
 
-    stepSim();
+    updateMonkSchedule(h);
+    stepSim(now);
     buildMap(night);
 
     const camX = Math.floor(canvas.width / 2 - myX);
@@ -862,10 +1255,15 @@ function loop(now) {
     const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
     if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
 
-    drawPondKoi(ctx, now);
+    drawDynamicWorld(ctx, now);
+    updateAndDrawMonkAndCelestials(ctx, now);
 
     list.length = 0;
-    list.push({ x: myX, y: myY, name: myName, cfg, med: isMed, walk, chat: chatMsg });
+    list.push({
+        x: myX, y: myY, name: myName, cfg,
+        med: isMed, medElapsedMs, holdingFruit: myHoldingFruit, offerings: myOfferings,
+        walk, chat: chatMsg
+    });
     for (const id in remotes) {
         const rp = remotes[id];
         if (rp.x >= left - 72 && rp.x <= right + 72 && rp.y >= top - 120 && rp.y <= bottom + 72) {
@@ -879,6 +1277,7 @@ function loop(now) {
 }
 
 initCreator();
+updateStatusHud();
 requestAnimationFrame(loop);
 </script>
 </body>
