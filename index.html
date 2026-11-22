@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản - V7.5</title>
+    <title>Thiền Viện Tối Giản - V7.6</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -66,7 +66,7 @@
             color: #f4d03f; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer;
         }
         #chat-log {
-            max-height: 82px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            max-height: 86px; overflow-y: auto; -webkit-overflow-scrolling: touch;
             display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.3;
             padding-right: 2px;
         }
@@ -136,7 +136,7 @@
 
         <div id="login-screen">
             <div id="login-box">
-                <h2 class="title-txt">THIỀN VIỆN V7.5</h2>
+                <h2 class="title-txt">THIỀN VIỆN V7.6</h2>
                 <div class="creator-row">
                     <div class="preview-box">
                         <canvas id="previewCanvas" width="92" height="116"></canvas>
@@ -187,13 +187,13 @@ const OUTFIT_LIST = [
     { name: 'Áo Hồng', shirt: '#d9829b', vest: '#7a3e52', pants: '#374151', skirt: '#5c3d4e' }
 ];
 
-// Thu nhỏ ~70% theo tỷ lệ 9:16
+// Tỷ lệ 9:16 thu nhỏ còn ~70%
 const MAP_W = 1260;
 const MAP_H = 2240;
 const BODHI = { x: 340, y: 740 };
 const GATE  = { x: 630, y: 1120 };
 const POND  = { x: 930, y: 1560, r: 125 };
-const ROOM_ID = 'thienvien_v75_room';
+const ROOM_ID = 'thienvien_v76_room';
 const MAX_CONNS = 20;
 const MAX_RENDER = 100;
 const IDLE_FRAME_MS = 1000 / 24;
@@ -259,7 +259,7 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Dựng nhân vật chi tiết (ảnh mẫu image_a85005.jpg & image_a85020.jpg)
+// Dựng nhân vật chi tiết theo ảnh mẫu
 function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
     const W = 42, H = 56, S = 2;
     const cv = document.createElement('canvas');
@@ -366,7 +366,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
         px(headX + 8, bodyY + 10, skin, 2, 3);
 
         if (isMonk) {
-            // Bình bát khất thực
             px(headX - 4, bodyY + 11, ink, 8, 5);
             px(headX - 3, bodyY + 12, '#37474f', 6, 3);
         }
@@ -552,7 +551,7 @@ function getCharFrames(name, c, isMonk = false) {
     return frames;
 }
 
-// Hào quang thiền phát sáng từ đầu làm trung tâm, biến đổi theo phút ngồi thiền + số lần cúng dường
+// Hào quang thiền phát sáng từ đầu làm trung tâm, biến đổi theo mốc phút ngồi thiền + số lần cúng dường
 function drawMeditationAura(ctx, cx, cy, medMinutes, offeringCount, t) {
     const offerBoost = Math.min(offeringCount * 4, 24);
     const pulse = 0.95 + Math.sin(t * 0.004) * 0.05;
@@ -632,7 +631,6 @@ function drawMeditationAura(ctx, cx, cy, medMinutes, offeringCount, t) {
             ctx.fillStyle = (i % 2 === 0) ? '#ff80ab' : '#ffeb3b';
             ctx.fillRect(Math.round(hx - 3 + sway), Math.round(hy - 4), 6, 4);
         }
-        // Bướm & chim nhỏ bay lượn quanh
         for (let b = 0; b < 4; b++) {
             const ba = t * 0.0018 + b * 1.57;
             const bx = cx + Math.cos(ba) * (baseR + 24);
@@ -657,7 +655,6 @@ function drawPerson(ctx, e, t) {
 
     ctx.drawImage(frames[idx], rx - 72, ry - 118);
 
-    // Đang cầm trái cây trên tay
     if (e.holdingFruit) {
         ctx.fillStyle = '#ff5252';
         ctx.beginPath();
@@ -717,7 +714,6 @@ function setGender(g, btn) {
     renderPreview();
 }
 
-// Cây nấm to cao hơn người, khóm bụi cỏ, hoa nhỏ ngẫu nhiên, đá cuội ven hồ
 const MUSHROOMS = [
     { x: 240, y: 1220 }, { x: 960, y: 780 }, { x: 260, y: 1840 }, { x: 980, y: 1980 }
 ];
@@ -750,7 +746,6 @@ function buildMap(night) {
     cachedNight = night;
     const s = staticCtx;
 
-    // Nền cỏ chi tiết phong cách pixel (image_a85eaa.png)
     const tile = 32;
     for (let y = 300; y < MAP_H; y += tile) {
         for (let x = 0; x < MAP_W; x += tile) {
@@ -765,7 +760,6 @@ function buildMap(night) {
         }
     }
 
-    // Mép trên: núi non kèm mây mờ sương ảo + mặt trời / trăng sao (image_a8c8a6.png)
     const skyGrad = s.createLinearGradient(0, 0, 0, 320);
     if (night) {
         skyGrad.addColorStop(0, '#070d1c');
@@ -789,7 +783,6 @@ function buildMap(night) {
         s.beginPath(); s.arc(1030, 76, 28, 0, Math.PI * 2); s.fill();
     }
 
-    // Dãy núi xa & gần
     s.fillStyle = night ? '#1b314a' : '#5e8aa8';
     s.beginPath();
     s.moveTo(0, 310); s.lineTo(180, 130); s.lineTo(420, 230); s.lineTo(680, 110);
@@ -802,7 +795,6 @@ function buildMap(night) {
     s.lineTo(1110, 275); s.lineTo(MAP_W, 205); s.lineTo(MAP_W, 320);
     s.closePath(); s.fill();
 
-    // Mây sương mờ cuốn quanh núi
     s.fillStyle = night ? 'rgba(180, 210, 240, 0.16)' : 'rgba(255, 255, 255, 0.52)';
     for (let i = 0; i < 9; i++) {
         const mx = 90 + i * 140;
@@ -812,13 +804,11 @@ function buildMap(night) {
         s.fill();
     }
 
-    // Hoa nhỏ rải rác khắp map không theo quy luật
     RANDOM_FLOWERS.forEach(f => {
         if (Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 24) return;
         s.drawImage(SPR_FLOWERS[f.kind], f.x, f.y);
     });
 
-    // Bể cá + đá cuội to ven hồ
     s.fillStyle = night ? '#37474f' : '#8d8476';
     s.beginPath(); s.ellipse(POND.x, POND.y, POND.r + 10, POND.r * 0.72 + 10, 0, 0, Math.PI * 2); s.fill();
     s.fillStyle = night ? '#123a54' : '#3b82c4';
@@ -831,20 +821,16 @@ function buildMap(night) {
         s.beginPath(); s.ellipse(pb.x, pb.y, pb.rx, pb.ry, 0, 0, Math.PI * 2); s.fill();
     });
 
-    // Khóm bụi cỏ
     BUSHES.forEach(b => {
         s.drawImage(SPR_BUSH, Math.round(b.x - SPR_BUSH.width / 2), Math.round(b.y - SPR_BUSH.height + 6));
     });
 
-    // Cây nấm to cao hơn người
     MUSHROOMS.forEach(m => {
         s.drawImage(SPR_MUSHROOM, Math.round(m.x - SPR_MUSHROOM.width / 2), Math.round(m.y - SPR_MUSHROOM.height + 6));
     });
 
-    // 1 cây bồ đề to
     s.drawImage(SPR_BODHI, Math.round(BODHI.x - SPR_BODHI.width / 2), Math.round(BODHI.y - SPR_BODHI.height + 12));
 
-    // Cổng tam quan ở giữa map (hiện tại empty)
     s.fillStyle = '#6d4c41';
     s.fillRect(GATE.x - 56, GATE.y - 76, 12, 76);
     s.fillRect(GATE.x + 44, GATE.y - 76, 12, 76);
@@ -855,7 +841,6 @@ function buildMap(night) {
     s.fillRect(GATE.x - 34, GATE.y - 62, 68, 9);
 }
 
-// Hiệu ứng động trên map: ánh sáng cây bồ đề, cổng tam quan phát sáng, cá koi, bướm bụi cỏ, sư khất thực & chư thiên
 let fruitSpawned = false;
 const FRUITS = [
     { x: BODHI.x - 42, y: BODHI.y - 58, taken: false },
@@ -899,7 +884,6 @@ function updateMonkSchedule(vnHour) {
 }
 
 function drawDynamicWorld(ctx, now) {
-    // 1. Cây bồ đề phát sáng nhẹ tỏa xung quanh
     const bPulse = 0.85 + Math.sin(now * 0.0025) * 0.15;
     const bGrad = ctx.createRadialGradient(BODHI.x, BODHI.y - 48, 12, BODHI.x, BODHI.y - 48, 130 * bPulse);
     bGrad.addColorStop(0, 'rgba(255, 245, 157, 0.36)');
@@ -907,13 +891,11 @@ function drawDynamicWorld(ctx, now) {
     ctx.fillStyle = bGrad;
     ctx.beginPath(); ctx.arc(BODHI.x, BODHI.y - 48, 130 * bPulse, 0, Math.PI * 2); ctx.fill();
 
-    // 2. Cổng tam quan phát sáng ở giữa map (empty - chưa chuyển map)
     const gPulse = 0.8 + Math.sin(now * 0.003) * 0.2;
     ctx.strokeStyle = `rgba(255, 224, 130, ${0.75 * gPulse})`;
     ctx.lineWidth = 3;
     ctx.strokeRect(GATE.x - 16, GATE.y - 48, 32, 48);
 
-    // 3. Cá Koi trong bể
     for (let i = 0; i < 5; i++) {
         const ang = now * 0.0005 + i * 1.25;
         const kx = POND.x + Math.cos(ang) * 55;
@@ -922,7 +904,6 @@ function drawDynamicWorld(ctx, now) {
         ctx.fillRect(Math.round(kx - 4), Math.round(ky - 2), 8, 4);
     }
 
-    // 4. Bướm bay xung quanh bụi cỏ sau mỗi 1 phút (mỗi chu kỳ 60s có 15s bướm bay quanh)
     const secInMin = (now / 1000) % 60;
     if (secInMin < 15) {
         BUSHES.forEach((b, idx) => {
@@ -934,7 +915,6 @@ function drawDynamicWorld(ctx, now) {
         });
     }
 
-    // 5. Trái cây mọc trên cây khi sư xuất hiện
     if (fruitSpawned) {
         FRUITS.forEach(fr => {
             if (!fr.taken) {
@@ -955,7 +935,6 @@ function updateAndDrawMonkAndCelestials(ctx, now) {
 
     drawPerson(ctx, monk, now);
 
-    // 3 chư thiên bé như đom đóm bay quanh sư, tung hoa (tung xong hoa mất)
     for (let i = 0; i < celestialList.length; i++) {
         const c = celestialList[i];
         const ca = now * 0.002 + c.ang;
@@ -975,7 +954,6 @@ function updateAndDrawMonkAndCelestials(ctx, now) {
         }
     }
 
-    // Đi hết mép map thì sư và chư thiên biến mất
     if ((dir > 0 && monk.x >= monk.endX) || (dir < 0 && monk.x <= monk.endX)) {
         monk = null;
         fruitSpawned = false;
@@ -1003,14 +981,12 @@ function interactAction() {
     if (myHoldingFruit && monk && Math.hypot(myX - monk.x, myY - monk.y) < 75) {
         myHoldingFruit = false;
         myOfferings += 1;
-        // Reset chư thiên tung hoa mỗi lần cúng dường
         celestialList = [0, 1, 2].map(i => ({ ang: i * 2.09, petalProgress: 0, tossed: false }));
         pushChatLine('Hệ thống', `Bạn đã cúng dường (tổng ${myOfferings} lần)!`);
         updateStatusHud();
     }
 }
 
-// Khung chat đen mờ trong suốt 40%, lưu ~60s, có nút co giãn mũi tên & vuốt cuộn
 const chatLogEl = document.getElementById('chat-log');
 const chatEntries = [];
 
