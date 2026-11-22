@@ -3,451 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản Online - V6 Pro (RotMG Pixel Edition)</title>
+    <title>Thiền Viện Tối Giản Online - V6.2 (9:16 RotMG Pixel)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #0c0e0c;
-            touch-action: manipulation;
+            margin: 0; padding: 0; width: 100%; height: 100dvh;
+            overflow: hidden; background: #090b09;
+            font-family: 'Courier New', Courier, monospace; color: #f4f6f2;
+            display: flex; justify-content: center; align-items: center;
         }
-        canvas, .game-container {
-            width: 100% !important; height: 100% !important; display: block;
+
+        /* Khung 9:16 chuẩn dọc điện thoại, tự động co giãn theo tỉ lệ trên màn hình lớn */
+        #game-frame {
+            position: relative;
+            width: min(100vw, calc(100dvh * 9 / 16));
+            height: min(100dvh, calc(100vw * 16 / 9));
+            background: #141a13;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(244, 208, 63, 0.22);
         }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; overflow: hidden; background: #0c0e0c;
-            font-family: 'Courier New', Courier, monospace; color: #fff; user-select: none;
-        }
-        canvas {
-            display: block;
+
+        #gameCanvas {
+            width: 100%; height: 100%; display: block;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
+            touch-action: none;
         }
 
-        /* Màn hình Đăng nhập / Tạo tài khoản chuyên nghiệp */
-        #login-screen {
-            position: absolute; inset: 0; background: rgba(10, 14, 10, 0.96);
-            display: flex; justify-content: center; align-items: center; z-index: 25; padding: 15px;
-        }
-        #login-box {
-            background: #1c221a; border: 3px solid #5c6b54; border-radius: 12px;
-            padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 16px 40px rgba(0,0,0,0.85);
-        }
-        h2 { margin: 0 0 14px 0; text-align: center; color: #f4d03f; letter-spacing: 1.5px; font-size: 20px; text-transform: uppercase; }
-        .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-        .tab-btn {
-            flex: 1; padding: 8px; background: #263024; border: 1px solid #5c6b54;
-            color: #ccc; cursor: pointer; font-family: inherit; font-weight: bold; border-radius: 6px; font-size: 12px;
-            transition: all 0.2s;
-        }
-        .tab-btn.active { background: #d4af37; color: #111; border-color: #fff; }
-        .creator-layout { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
-        .preview-box {
-            width: 110px; height: 130px; background: #2e4d25;
-            border: 2px solid #6e8263; border-radius: 8px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .controls-box { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-        .control-row { display: flex; flex-direction: column; gap: 4px; font-size: 12px; margin-bottom: 8px; }
-        .btn-group { display: flex; gap: 5px; flex-wrap: wrap; }
-        .opt-btn {
-            background: #2b3328; border: 1px solid #5c6b54; color: #ddd;
-            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px;
-        }
-        .opt-btn.active { background: #d4af37; color: #111; font-weight: bold; border-color: #fff; }
-        .color-swatch { width: 22px; height: 22px; border-radius: 4px; border: 2px solid #444; cursor: pointer; }
-        .color-swatch.active { border-color: #fff; transform: scale(1.15); }
-        input[type="text"], input[type="password"] {
-            width: 100%; background: #121610; border: 1px solid #5c6b54;
-            color: #fff; padding: 8px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; outline: none;
-        }
-        input:focus { border-color: #f4d03f; }
-        .secret-box { display: flex; gap: 6px; align-items: center; }
-        .copy-btn {
-            background: #3b5998; border: 1px solid #6d84b4; color: #fff;
-            padding: 8px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; white-space: nowrap;
-        }
-        .start-btn {
-            width: 100%; background: #4a7c36; border: 2px solid #7ab85c; color: #fff;
-            padding: 12px; font-size: 15px; font-weight: bold; border-radius: 6px;
-            cursor: pointer; font-family: inherit; margin-top: 8px; letter-spacing: 0.5px;
-        }
-        .start-btn:hover { background: #5a9442; }
-        .msg-error { color: #ff6b6b; font-size: 12px; margin-top: 4px; min-height: 16px; }
-
-        /* Nút chức năng HUD góc trái trên */
-        #music-toggle-btn {
-            position: absolute; top: 10px; left: 10px; z-index: 20;
-            background: rgba(20, 25, 20, 0.9); border: 1px solid #d4af37; color: #f4d03f;
-            padding: 7px 12px; border-radius: 8px; cursor: pointer;
-            font-family: inherit; font-size: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-        #music-toggle-btn:hover { background: rgba(40, 50, 35, 0.95); }
-
-        #weather-toggle-btn {
-            position: absolute; top: 10px; left: 152px; z-index: 20;
-            background: rgba(20, 25, 20, 0.9); border: 1px solid #81c784; color: #81c784;
-            padding: 7px 12px; border-radius: 8px; cursor: pointer;
-            font-family: inherit; font-size: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-        #weather-toggle-btn:hover { background: rgba(40, 50, 35, 0.95); }
-
-        /* HUD thông tin góc trái */
-        #hud-top {
-            position: absolute; top: 52px; left: 10px; z-index: 15;
-            background: rgba(12, 16, 12, 0.82); border: 1px solid #444;
-            padding: 8px 12px; border-radius: 8px; font-size: 11px; line-height: 1.5;
-            pointer-events: none; backdrop-filter: blur(4px);
+        /* Tooltip mini khi rê chuột / chạm / focus vào icon */
+        #ui-tooltip {
+            position: fixed; z-index: 60; pointer-events: none;
+            background: rgba(12, 16, 12, 0.95); border: 1px solid #f4d03f;
+            color: #ffeb3b; padding: 5px 9px; border-radius: 6px;
+            font-size: 11px; line-height: 1.35; white-space: nowrap;
+            display: none; box-shadow: 0 6px 18px rgba(0,0,0,0.75);
         }
 
-        /* HUD Nhiệm vụ & Karma (Góc phải trên) */
-        #quest-hud {
-            position: absolute; top: 10px; right: 10px; z-index: 15;
-            background: rgba(12, 16, 12, 0.88); border: 1px solid #d4af37;
-            padding: 10px 14px; border-radius: 8px; font-size: 11px; line-height: 1.6;
-            width: 260px; pointer-events: none; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-        }
-
-        /* Thanh chat & nút hành động */
-        #ui-bottom {
-            position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
-            display: none; gap: 6px; background: rgba(15, 18, 15, 0.9);
-            border: 1px solid #555; padding: 8px; border-radius: 10px;
-            width: 94%; max-width: 580px; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,0.7);
-        }
-        #chat-input { flex: 1; }
-        .action-btn {
-            background: #8c6d1f; border: 1px solid #f4d03f; color: #fff;
-            padding: 7px 12px; border-radius: 6px; cursor: pointer;
-            font-family: inherit; font-weight: bold; font-size: 12px; white-space: nowrap;
-        }
-        .action-btn.meditating { background: #2e7d32; border-color: #81c784; }
-
-        /* Dòng chữ chạy ngang dưới cùng - Tốc độ thật chậm (95s) để dễ đọc */
-        #marquee-bar {
-            position: absolute; bottom: 6px; left: 0; width: 100%; height: 30px;
-            background: rgba(0, 0, 0, 0.65);
-            border-top: 1px solid rgba(255,255,255,0.15);
-            border-bottom: 1px solid rgba(255,255,255,0.15);
-            overflow: hidden; display: flex; align-items: center; z-index: 18;
+        /* HUD gọn nhẹ góc trái trên */
+        #hud-mini {
+            position: absolute; top: 8px; left: 8px; z-index: 15;
+            background: rgba(10, 14, 10, 0.78); border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 7px; padding: 6px 9px; font-size: 10px; line-height: 1.45;
             pointer-events: none;
         }
-        #marquee-text {
-            white-space: nowrap; color: #f4d03f; font-size: 13px; font-weight: bold;
-            display: inline-block; padding-left: 100%;
-            animation: scrollLeft 95s linear infinite;
-        }
-        @keyframes scrollLeft {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
-        }
 
-        /* Bảng Cây Bồ Đề Nguyện Ước Modal */
-        #wish-modal {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.8);
-            display: none; justify-content: center; align-items: center; z-index: 30;
+        /* Cụm nút icon góc phải trên */
+        #icon-bar-top {
+            position: absolute; top: 8px; right: 8px; z-index: 20;
+            display: flex; gap: 6px;
         }
-        #wish-box {
-            background: #1c221a; border: 3px solid #d4af37; border-radius: 12px;
-            padding: 24px; width: 90%; max-width: 420px; text-align: center;
+        .icon-btn {
+            width: 34px; height: 34px; border-radius: 8px;
+            background: rgba(18, 24, 18, 0.88); border: 1px solid rgba(244, 208, 63, 0.65);
+            color: #f4d03f; font-size: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.12s, background 0.15s;
         }
-        #wish-textarea {
-            width: 100%; height: 80px; background: #121610; border: 1px solid #5c6b54;
-            color: #fff; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 13px;
-            resize: none; outline: none; margin-bottom: 12px;
+        .icon-btn:hover { background: rgba(42, 56, 40, 0.95); transform: translateY(-1px); }
+        .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
+        .icon-btn.muted { opacity: 0.65; border-color: rgba(255,255,255,0.25); color: #bbb; }
+
+        /* Thanh chat gọn ở đáy khung 9:16 */
+        #chat-dock {
+            position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
+            display: none; gap: 6px; align-items: center;
+            background: rgba(12, 16, 12, 0.86); border: 1px solid rgba(255,255,255,0.2);
+            padding: 5px; border-radius: 9px;
         }
-        .modal-btn-group { display: flex; gap: 10px; }
-        .modal-btn { flex: 1; padding: 9px; border-radius: 6px; font-weight: bold; cursor: pointer; font-family: inherit; }
-        .btn-confirm { background: #d4af37; border: 1px solid #fff; color: #111; }
-        .btn-cancel { background: #333; border: 1px solid #555; color: #ccc; }
+        #chat-input {
+            flex: 1; min-width: 0; background: #0c100c; border: 1px solid #485644;
+            color: #fff; padding: 6px 9px; border-radius: 6px;
+            font-family: inherit; font-size: 12px; outline: none;
+        }
+        #chat-input:focus { border-color: #f4d03f; }
+
+        /* Màn hình vào game / tạo nhân vật gọn trong khung 9:16 */
+        #login-screen {
+            position: absolute; inset: 0; background: rgba(10, 14, 10, 0.96);
+            display: flex; justify-content: center; align-items: center; z-index: 30; padding: 10px;
+        }
+        #login-box {
+            width: 100%; max-height: 100%; overflow-y: auto;
+            background: #1a2118; border: 2px solid #5a6b52; border-radius: 10px;
+            padding: 14px; box-shadow: 0 14px 36px rgba(0,0,0,0.85);
+        }
+        .title-txt {
+            margin: 0 0 10px 0; text-align: center; color: #f4d03f;
+            font-size: 15px; letter-spacing: 1px;
+        }
+        .tab-bar { display: flex; gap: 5px; margin-bottom: 10px; }
+        .tab-btn {
+            flex: 1; padding: 6px 4px; background: #242e22; border: 1px solid #4e5e48;
+            color: #c8d0c4; font-family: inherit; font-size: 11px; font-weight: bold;
+            border-radius: 6px; cursor: pointer;
+        }
+        .tab-btn.active { background: #d4af37; color: #111; border-color: #fff; }
+
+        .creator-top { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .preview-box {
+            width: 92px; height: 108px; background: #e8e6df;
+            border: 2px solid #75876b; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        #previewCanvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+        .creator-opts { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .opt-label { font-size: 10px; color: #b8c4b2; margin-bottom: 2px; display: block; }
+        .btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
+        .mini-btn {
+            background: #283326; border: 1px solid #4e5e48; color: #e0e6dc;
+            padding: 3px 6px; border-radius: 4px; font-family: inherit; font-size: 10px; cursor: pointer;
+        }
+        .mini-btn.active { background: #d4af37; color: #111; font-weight: bold; border-color: #fff; }
+        .swatch {
+            width: 18px; height: 18px; border-radius: 4px; border: 2px solid #3c4639; cursor: pointer;
+        }
+        .swatch.active { border-color: #fff; transform: scale(1.1); }
+
+        .field-group { margin-bottom: 8px; }
+        input[type="text"], input[type="password"] {
+            width: 100%; background: #10140f; border: 1px solid #4e5e48;
+            color: #fff; padding: 7px 9px; border-radius: 6px;
+            font-family: inherit; font-size: 12px; outline: none;
+        }
+        input:focus { border-color: #f4d03f; }
+        .secret-row { display: flex; gap: 5px; }
+        .go-btn {
+            width: 100%; background: #467832; border: 2px solid #79b85c; color: #fff;
+            padding: 10px; border-radius: 7px; font-family: inherit; font-size: 13px;
+            font-weight: bold; cursor: pointer; margin-top: 4px;
+        }
+        .go-btn:hover { background: #548f3d; }
+        .err-txt { color: #ff7675; font-size: 11px; min-height: 15px; margin-top: 4px; }
     </style>
 </head>
 <body>
+    <div id="ui-tooltip"></div>
 
-    <button id="music-toggle-btn" onclick="toggleBackgroundMusic()">🔇 Nhạc Thiền: TẮT</button>
-    <button id="weather-toggle-btn" onclick="toggleWeather()">☀️ Thời Tiết: Nắng</button>
+    <div id="game-frame">
+        <div id="hud-mini">
+            <div id="hud-clock" style="color:#f4d03f;font-weight:bold;">00:00</div>
+            <div id="hud-online" style="color:#81c784;">1</div>
+            <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
+        </div>
 
-    <!-- Màn hình Đăng nhập / Tạo Tài Khoản -->
-    <div id="login-screen">
-        <div id="login-box">
-            <h2>THIỀN VIỆN TỐI GIẢN ONLINE</h2>
-            <div class="tab-bar">
-                <button class="tab-btn active" id="tab-guest" onclick="switchAuthTab('guest')">Vào Nhanh</button>
-                <button class="tab-btn" id="tab-register" onclick="switchAuthTab('register')">Tạo Tài Khoản</button>
-                <button class="tab-btn" id="tab-login" onclick="switchAuthTab('login')">Đăng Nhập</button>
-            </div>
+        <div id="icon-bar-top">
+            <button id="btn-meditate" class="icon-btn"
+                data-tip="Ngồi thiền [Space]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onfocus="showTip(this)" onblur="hideTip()"
+                onclick="toggleMeditate()">🧘</button>
+            <button id="btn-music" class="icon-btn muted"
+                data-tip="Nhạc thiền [M]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onfocus="showTip(this)" onblur="hideTip()"
+                onclick="toggleMusic()">🎵</button>
+        </div>
 
-            <div id="avatar-creator-section">
-                <div class="creator-layout">
-                    <div class="preview-box">
-                        <canvas id="previewCanvas" width="100" height="110"></canvas>
-                        <span style="font-size: 10px; color: #ddd; margin-top: 3px;">Xem trước</span>
-                    </div>
-                    <div class="controls-box">
-                        <div class="control-row">
-                            <span>Giới tính:</span>
-                            <div class="btn-group" id="gender-group">
-                                <button class="opt-btn active" onclick="setGender('male', this)">Nam</button>
-                                <button class="opt-btn" onclick="setGender('female', this)">Nữ</button>
+        <div id="login-screen">
+            <div id="login-box">
+                <h2 class="title-txt">THIỀN VIỆN TỐI GIẢN</h2>
+                <div class="tab-bar">
+                    <button class="tab-btn active" id="tab-guest" onclick="switchTab('guest')">Vào Nhanh</button>
+                    <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Tạo TK</button>
+                    <button class="tab-btn" id="tab-login" onclick="switchTab('login')">Đăng Nhập</button>
+                </div>
+
+                <div id="creator-panel">
+                    <div class="creator-top">
+                        <div class="preview-box">
+                            <canvas id="previewCanvas" width="84" height="96"></canvas>
+                        </div>
+                        <div class="creator-opts">
+                            <div>
+                                <span class="opt-label">Giới tính (phom chuẩn)</span>
+                                <div class="btn-row" id="gender-row">
+                                    <button class="mini-btn active" onclick="setGender('male', this)">Nam</button>
+                                    <button class="mini-btn" onclick="setGender('female', this)">Nữ</button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="opt-label">Da</span>
+                                <div class="btn-row" id="skin-row"></div>
+                            </div>
+                            <div>
+                                <span class="opt-label">Kiểu tóc (5 kiểu)</span>
+                                <div class="btn-row" id="hair-row"></div>
+                            </div>
+                            <div>
+                                <span class="opt-label">Áo</span>
+                                <div class="btn-row" id="outfit-row"></div>
                             </div>
                         </div>
-                        <div class="control-row">
-                            <span>Màu da:</span>
-                            <div class="btn-group" id="skin-group"></div>
-                        </div>
-                        <div class="control-row">
-                            <span>Kiểu tóc:</span>
-                            <div class="btn-group" id="hair-group"></div>
-                        </div>
-                        <div class="control-row">
-                            <span>Trang phục:</span>
-                            <div class="btn-group" id="outfit-group"></div>
+                    </div>
+                    <div class="field-group">
+                        <span class="opt-label">Tên nhân vật</span>
+                        <input type="text" id="name-input" maxlength="14" value="Hành Giả" placeholder="Tên nhân vật">
+                    </div>
+                </div>
+
+                <div id="register-panel" style="display:none;">
+                    <div class="field-group">
+                        <span class="opt-label">ID tài khoản</span>
+                        <input type="text" id="reg-id" maxlength="20" placeholder="ID tài khoản">
+                    </div>
+                    <div class="field-group">
+                        <span class="opt-label">Mật khẩu</span>
+                        <input type="password" id="reg-pass" maxlength="24" placeholder="Mật khẩu">
+                    </div>
+                    <div class="field-group">
+                        <span class="opt-label">Mã bảo mật 23 ký tự</span>
+                        <div class="secret-row">
+                            <input type="text" id="reg-secret" readonly>
+                            <button type="button" class="mini-btn" onclick="copySecret()">Copy</button>
                         </div>
                     </div>
                 </div>
-                <div class="control-row">
-                    <span>Tên Nhân Vật (Pháp danh):</span>
-                    <input type="text" id="username-input" placeholder="Ví dụ: Mèo Đen" maxlength="16" value="Hành Giả">
-                </div>
-            </div>
 
-            <div id="register-fields" style="display: none;">
-                <div class="control-row">
-                    <span>ID Tài Khoản:</span>
-                    <input type="text" id="reg-id" placeholder="Ví dụ: taikhoan01" maxlength="20">
-                </div>
-                <div class="control-row">
-                    <span>Mật khẩu (Password):</span>
-                    <input type="password" id="reg-pass" placeholder="Nhập mật khẩu..." maxlength="24">
-                </div>
-                <div class="control-row">
-                    <span>Mã bảo mật tự sinh (23 ký tự - Hãy lưu lại):</span>
-                    <div class="secret-box">
-                        <input type="text" id="reg-secret" readonly>
-                        <button type="button" class="copy-btn" onclick="copySecretCode()">📋 Copy</button>
+                <div id="login-panel" style="display:none;">
+                    <div class="field-group">
+                        <span class="opt-label">ID tài khoản</span>
+                        <input type="text" id="login-id" placeholder="ID tài khoản">
+                    </div>
+                    <div class="field-group">
+                        <span class="opt-label">Mật khẩu hoặc mã 23 ký tự</span>
+                        <input type="text" id="login-cred" placeholder="Mật khẩu / mã 23 ký tự">
                     </div>
                 </div>
-            </div>
 
-            <div id="login-fields" style="display: none;">
-                <div class="control-row">
-                    <span>ID Tài Khoản:</span>
-                    <input type="text" id="login-id" placeholder="Nhập ID đã tạo (VD: taikhoan01)">
-                </div>
-                <div class="control-row">
-                    <span>Mật khẩu HOẶC Mã bảo mật 23 ký tự:</span>
-                    <input type="text" id="login-pass-or-secret" placeholder="Nhập mật khẩu hoặc dán mã 23 ký tự...">
-                </div>
-            </div>
-
-            <div class="msg-error" id="auth-error"></div>
-            <button class="start-btn" id="main-start-btn" onclick="handleAuthSubmit()">BƯỚC VÀO THIỀN VIỆN</button>
-        </div>
-    </div>
-
-    <!-- HUD trạng thái góc trái -->
-    <div id="hud-top">
-        <div id="vn-clock" style="color: #f4d03f; font-weight: bold;">🕒 Giờ VN (GMT+7): --:--</div>
-        <div id="online-count" style="color: #81c784;">● Đang kết nối...</div>
-        <div id="fps-counter" style="color: #90caf9;">⚡ FPS: 60 | Hiển thị: 1</div>
-        <div id="pet-status" style="color: #80deea;">🐾 Linh thú: Chưa có</div>
-        <div id="holding-status" style="color: #ffab91;">🍎 Đang cầm: Không</div>
-    </div>
-
-    <!-- HUD Nhiệm vụ & Công đức (Góc phải trên) -->
-    <div id="quest-hud">
-        <div style="color: #f4d03f; font-weight: bold; margin-bottom: 4px; border-bottom: 1px solid #444; padding-bottom: 2px;">📜 PHÁP LỆNH HÀNG NGÀY</div>
-        <div id="quest-meditate" style="color: #ddd;">🧘 Ngồi thiền (0/3 phút): [ ]</div>
-        <div id="quest-alms" style="color: #ddd;">🙏 Cúng dường Chư Tăng: [ ]</div>
-        <div id="karma-score" style="color: #81c784; font-weight: bold; margin-top: 4px;">✨ Điểm Công Đức (Karma): 0</div>
-    </div>
-
-    <!-- Modal Cây Bồ Đề Nguyện Ước -->
-    <div id="wish-modal">
-        <div id="wish-box">
-            <h3 style="color: #f4d03f; margin-top: 0;">🌿 CÂY BỒ ĐỀ NGUYỆN ƯỚC</h3>
-            <p style="font-size: 12px; color: #ccc; margin-bottom: 12px;">Hãy viết lời nguyện ước hoặc tâm sự thanh tịnh trong ngày (tối đa 50 ký tự):</p>
-            <textarea id="wish-textarea" maxlength="50" placeholder="Ví dụ: Nguyện cầu bình an đến với mọi người..."></textarea>
-            <div class="modal-btn-group">
-                <button class="modal-btn btn-confirm" onclick="submitWish()">Gửi Lời Nguyện</button>
-                <button class="modal-btn btn-cancel" onclick="closeWishModal()">Đóng</button>
+                <div class="err-txt" id="auth-err"></div>
+                <button class="go-btn" id="go-btn" onclick="submitAuth()">VÀO GAME</button>
             </div>
         </div>
-    </div>
 
-    <!-- Thanh chat & nút hành động -->
-    <div id="ui-bottom">
-        <input type="text" id="chat-input" placeholder="Nhập lời nhắn (Enter gửi)..." maxlength="60" onkeydown="handleChatKey(event)">
-        <button id="meditate-btn" class="action-btn" onclick="toggleMeditate()">🧘 Ngồi Thiền</button>
-    </div>
+        <canvas id="gameCanvas"></canvas>
 
-    <!-- Dòng chữ chạy ngang dưới cùng -->
-    <div id="marquee-bar">
-        <span id="marquee-text">
-            🌿 Chào mừng quý hành giả đến với Thiền Viện Tối Giản Online! &nbsp;&nbsp;•&nbsp;&nbsp; Di chuyển: Bấm chuột / Chạm màn hình hoặc phím [W A S D] &nbsp;&nbsp;•&nbsp;&nbsp; Ngồi thiền: Phím [SPACE] hoặc nút Ngồi Thiền &nbsp;&nbsp;•&nbsp;&nbsp; Bật/Tắt nhạc: Góc trên bên trái hoặc phím [M] &nbsp;&nbsp;•&nbsp;&nbsp; Bật/Tắt thời tiết Mưa/Nắng: Nút cạnh nút Nhạc &nbsp;&nbsp;•&nbsp;&nbsp; 10h00 sáng hàng ngày (giờ VN): Chư Tăng đi khất thực 30 phút, hãy hái hoa quả trên cây và chạm vào Chư Tăng để cúng dường! &nbsp;&nbsp;•&nbsp;&nbsp; Chạm vào Cây Bồ Đề lớn ở Chính Điện để gửi Lời Nguyện Ước!
-        </span>
+        <div id="chat-dock">
+            <input type="text" id="chat-input" maxlength="55" placeholder="Chat..." onkeydown="onChatKey(event)">
+            <button class="icon-btn"
+                data-tip="Gửi [Enter]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onfocus="showTip(this)" onblur="hideTip()"
+                onclick="sendChatFromInput()">💬</button>
+        </div>
     </div>
-
-    <canvas id="gameCanvas"></canvas>
 
 <script>
-// ============================================================================
-// THIỀN VIỆN TỐI GIẢN ONLINE - V6 PRO (100% ROTMG PIXEL ART & ENHANCED FEATURES)
-// Theo yêu cầu Chuyên gia Thiết kế Game Top 1 Thế Giới:
-// 1. Tăng kích thước nhân vật, tên nhân vật và linh thú to lên 25% (pixelSize = 5 thay vì 4, pet to tương ứng).
-// 2. Hệ thống Pháp Lệnh Hằng Ngày & Điểm Công Đức (Karma) tăng khi làm việc thiện.
-// 3. Tính năng Cây Bồ Đề Nguyện Ước (Gửi lời chúc/tâm sự treo trên cây cho hành giả khác đọc).
-// 4. Hiệu ứng Thời tiết linh hoạt (Nắng / Mưa rơi lất phất lãng mạn).
-// 5. Toàn bộ tối ưu 60 FPS, Frustum Culling, Offscreen Canvas & P2P Tree-Mesh 1000 CCU.
-// ============================================================================
+const tipEl = document.getElementById('ui-tooltip');
+let tipAutoHideTimer = null;
+function showTip(el) {
+    const txt = el.getAttribute('data-tip');
+    if (!txt) return;
+    tipEl.textContent = txt;
+    tipEl.style.display = 'block';
+    const r = el.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - tipEl.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tipEl.offsetWidth / 2));
+    const y = (r.bottom + 6 + tipEl.offsetHeight < window.innerHeight) ? (r.bottom + 6) : (r.top - tipEl.offsetHeight - 6);
+    tipEl.style.left = Math.round(x) + 'px';
+    tipEl.style.top = Math.round(y) + 'px';
+    if (tipAutoHideTimer) clearTimeout(tipAutoHideTimer);
+    tipAutoHideTimer = setTimeout(hideTip, 2200);
+}
+function hideTip() {
+    tipEl.style.display = 'none';
+}
+document.addEventListener('pointerdown', e => {
+    if (!e.target.closest || !e.target.closest('.icon-btn')) hideTip();
+}, { passive: true });
 
-// 1. NHẠC NỀN THIỀN (AUTO LOOP)
-const bgMusic = new Audio('https://64.media.tumblr.com/cac8c73386a47a7533a6a76ad015d5e0/ccd2180e7f99b415-22/6ea0e659e3b4cc36637445a483b122b47e93cbce.mp3');
-bgMusic.loop = true;
-bgMusic.volume = 0.45;
-let isMusicPlaying = false;
+let audioCtx = null;
+let musicInterval = null;
+let isMusicOn = false;
+const PENTATONIC_NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
 
-function toggleBackgroundMusic() {
-    const btn = document.getElementById('music-toggle-btn');
-    if (isMusicPlaying) {
-        bgMusic.pause();
-        isMusicPlaying = false;
-        btn.innerText = '🔇 Nhạc Thiền: TẮT';
+function playSoftBellNote(freq, durationSec = 2.4) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + durationSec + 0.05);
+}
+
+function startMusicLoop() {
+    if (musicInterval) return;
+    let step = 0;
+    musicInterval = setInterval(() => {
+        if (!isMusicOn) return;
+        const note = PENTATONIC_NOTES[(step * 2 + (step % 3)) % PENTATONIC_NOTES.length];
+        playSoftBellNote(note, 2.6);
+        step = (step + 1) % 64;
+    }, 2200);
+}
+
+function toggleMusic() {
+    const btn = document.getElementById('btn-music');
+    if (!isMusicOn) {
+        if (!audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+        }
+        isMusicOn = true;
+        startMusicLoop();
+        btn.classList.remove('muted');
+        btn.classList.add('active');
     } else {
-        bgMusic.play().then(() => {
-            isMusicPlaying = true;
-            btn.innerText = '🔊 Nhạc Thiền: BẬT';
-        }).catch(() => {});
+        isMusicOn = false;
+        btn.classList.remove('active');
+        btn.classList.add('muted');
     }
 }
 
-// Hệ thống thời tiết (Nắng / Mưa)
-let currentWeather = 'sunny'; // 'sunny' hoặc 'rainy'
-function toggleWeather() {
-    currentWeather = (currentWeather === 'sunny') ? 'rainy' : 'sunny';
-    const btn = document.getElementById('weather-toggle-btn');
-    if (currentWeather === 'rainy') {
-        btn.innerText = '🌧️ Thời Tiết: Mưa';
-        showFloatingNotice('🌧️ Đã chuyển sang thời tiết Mưa lất phất thiền vị.');
-    } else {
-        btn.innerText = '☀️ Thời Tiết: Nắng';
-        showFloatingNotice('☀️ Đã chuyển sang thời tiết Nắng ấm.');
-    }
-}
-
-// 2. HỆ THỐNG TÀI KHOẢN & MÃ BẢO MẬT 23 KÝ TỰ
 let authMode = 'guest';
-const SECRET_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
+const SECRET_POOL = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
 
-function generate23Secret() {
-    let res = '';
+function genSecret23() {
+    let s = '';
     for (let i = 0; i < 23; i++) {
-        res += SECRET_CHARS.charAt(Math.floor(Math.random() * SECRET_CHARS.length));
+        s += SECRET_POOL.charAt(Math.floor(Math.random() * SECRET_POOL.length));
     }
-    return res;
+    return s;
 }
 
-function copySecretCode() {
-    const input = document.getElementById('reg-secret');
-    input.select();
-    navigator.clipboard.writeText(input.value);
-    const btn = document.querySelector('.copy-btn');
-    btn.innerText = '✅ Đã Copy';
-    setTimeout(() => btn.innerText = '📋 Copy', 2000);
+function copySecret() {
+    const inp = document.getElementById('reg-secret');
+    inp.select();
+    if (navigator.clipboard) navigator.clipboard.writeText(inp.value).catch(() => {});
 }
 
-function switchAuthTab(mode) {
+function switchTab(mode) {
     authMode = mode;
-    document.getElementById('auth-error').innerText = '';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + mode).classList.add('active');
-
-    document.getElementById('avatar-creator-section').style.display = (mode === 'login') ? 'none' : 'block';
-    document.getElementById('register-fields').style.display = (mode === 'register') ? 'block' : 'none';
-    document.getElementById('login-fields').style.display = (mode === 'login') ? 'block' : 'none';
-
+    document.getElementById('auth-err').textContent = '';
+    ['guest', 'register', 'login'].forEach(m => {
+        document.getElementById('tab-' + m).classList.toggle('active', m === mode);
+    });
+    document.getElementById('creator-panel').style.display = (mode === 'login') ? 'none' : 'block';
+    document.getElementById('register-panel').style.display = (mode === 'register') ? 'block' : 'none';
+    document.getElementById('login-panel').style.display = (mode === 'login') ? 'block' : 'none';
     if (mode === 'register') {
-        document.getElementById('reg-secret').value = generate23Secret();
-        document.getElementById('main-start-btn').innerText = 'LƯU TÀI KHOẢN & VÀO THIỀN VIỆN';
-    } else if (mode === 'login') {
-        document.getElementById('main-start-btn').innerText = 'ĐĂNG NHẬP & VÀO THIỀN VIỆN';
-    } else {
-        document.getElementById('main-start-btn').innerText = 'BƯỚC VÀO THIỀN VIỆN';
+        document.getElementById('reg-secret').value = genSecret23();
     }
 }
 
-function getAccountsDB() {
-    try { return JSON.parse(localStorage.getItem('thienvien_accounts_v6pro') || '{}'); }
-    catch (e) { return {}; }
+function loadDB() {
+    try { return JSON.parse(localStorage.getItem('thienvien_v62_db') || '{}'); }
+    catch (_) { return {}; }
 }
 
-function saveAccountsDB(db) {
-    localStorage.setItem('thienvien_accounts_v6pro', JSON.stringify(db));
+function saveDB(db) {
+    try { localStorage.setItem('thienvien_v62_db', JSON.stringify(db)); }
+    catch (_) {}
 }
 
-function handleAuthSubmit() {
-    const errEl = document.getElementById('auth-error');
-    errEl.innerText = '';
-    const db = getAccountsDB();
+function submitAuth() {
+    const err = document.getElementById('auth-err');
+    err.textContent = '';
+    const db = loadDB();
 
     if (authMode === 'guest') {
-        const val = document.getElementById('username-input').value.trim();
-        myName = val || 'Hành Giả';
-        enterWorld();
+        myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
+        enterGame();
     } else if (authMode === 'register') {
-        const id = document.getElementById('reg-id').value.trim();
-        const pass = document.getElementById('reg-pass').value.trim();
-        const secret = document.getElementById('reg-secret').value.trim();
-        const charName = document.getElementById('username-input').value.trim() || 'Hành Giả';
-
-        if (!id || !pass) { errEl.innerText = 'Vui lòng nhập đầy đủ ID và Mật khẩu!'; return; }
-        if (db[id]) { errEl.innerText = 'ID tài khoản này đã tồn tại!'; return; }
-
-        db[id] = {
-            id: id, pass: pass, secret: secret, charName: charName,
-            cfg: JSON.parse(JSON.stringify(avatarConfig))
-        };
-        saveAccountsDB(db);
-        myName = charName;
-        enterWorld();
-    } else if (authMode === 'login') {
-        const id = document.getElementById('login-id').value.trim();
-        const credential = document.getElementById('login-pass-or-secret').value.trim();
-        if (!id || !credential) { errEl.innerText = 'Vui lòng nhập ID và Mật khẩu (hoặc Mã bảo mật)!'; return; }
-
+        const id = (document.getElementById('reg-id').value || '').trim();
+        const pass = (document.getElementById('reg-pass').value || '').trim();
+        const secret = (document.getElementById('reg-secret').value || '').trim();
+        const cname = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
+        if (!id || !pass) { err.textContent = 'Nhập ID và mật khẩu.'; return; }
+        if (db[id]) { err.textContent = 'ID đã tồn tại.'; return; }
+        db[id] = { id, pass, secret, name: cname, cfg: JSON.parse(JSON.stringify(cfg)) };
+        saveDB(db);
+        myName = cname;
+        enterGame();
+    } else {
+        const id = (document.getElementById('login-id').value || '').trim();
+        const cred = (document.getElementById('login-cred').value || '').trim();
+        if (!id || !cred) { err.textContent = 'Nhập ID và mật khẩu/mã.'; return; }
         const acc = db[id];
-        if (!acc) { errEl.innerText = 'Không tìm thấy ID tài khoản này trên trình duyệt!'; return; }
-        if (acc.pass !== credential && acc.secret !== credential) {
-            errEl.innerText = 'Sai Mật khẩu hoặc Mã bảo mật 23 ký tự!';
-            return;
+        if (!acc || (acc.pass !== cred && acc.secret !== cred)) {
+            err.textContent = 'Thông tin không khớp.'; return;
         }
-        myName = acc.charName;
-        avatarConfig = acc.cfg;
-        enterWorld();
+        myName = acc.name;
+        cfg = Object.assign({}, cfg, acc.cfg);
+        enterGame();
     }
 }
 
-function enterWorld() {
+function enterGame() {
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('ui-bottom').style.display = 'flex';
-    bgMusic.play().then(() => {
-        isMusicPlaying = true;
-        document.getElementById('music-toggle-btn').innerText = '🔊 Nhạc Thiền: BẬT';
-    }).catch(() => {});
-    initMultiplayer();
+    document.getElementById('chat-dock').style.display = 'flex';
+    initP2P();
 }
 
-// 3. HỆ THỐNG RENDER PIXEL ART CHUẨN ROTMG (TO HƠN 25%: pixelSize = 5)
 function bakeRotmgSprite(grid, palette, pixelSize = 5, addOutline = true) {
     const h = grid.length;
     const w = grid[0].length;
     const pad = addOutline ? 1 : 0;
-    const cw = (w + pad * 2) * pixelSize;
-    const ch = (h + pad * 2) * pixelSize;
     const c = document.createElement('canvas');
-    c.width = cw;
-    c.height = ch;
+    c.width = (w + pad * 2) * pixelSize;
+    c.height = (h + pad * 2) * pixelSize;
     const cx = c.getContext('2d');
     cx.imageSmoothingEnabled = false;
 
@@ -455,8 +417,8 @@ function bakeRotmgSprite(grid, palette, pixelSize = 5, addOutline = true) {
         cx.fillStyle = '#0c0e0c';
         for (let r = 0; r < h; r++) {
             for (let col = 0; col < w; col++) {
-                const chCode = grid[r][col];
-                if (chCode !== '.' && palette[chCode]) {
+                const ch = grid[r][col];
+                if (ch !== '.' && palette[ch]) {
                     const gx = col + pad;
                     const gy = r + pad;
                     cx.fillRect((gx - 1) * pixelSize, gy * pixelSize, pixelSize, pixelSize);
@@ -470,9 +432,9 @@ function bakeRotmgSprite(grid, palette, pixelSize = 5, addOutline = true) {
 
     for (let r = 0; r < h; r++) {
         for (let col = 0; col < w; col++) {
-            const chCode = grid[r][col];
-            if (chCode !== '.' && palette[chCode]) {
-                cx.fillStyle = palette[chCode];
+            const ch = grid[r][col];
+            if (ch !== '.' && palette[ch]) {
+                cx.fillStyle = palette[ch];
                 cx.fillRect((col + pad) * pixelSize, (r + pad) * pixelSize, pixelSize, pixelSize);
             }
         }
@@ -480,10 +442,9 @@ function bakeRotmgSprite(grid, palette, pixelSize = 5, addOutline = true) {
     return c;
 }
 
-const ROTMG_SPRITES = {};
-
-function initRotmgEnvironmentSprites() {
-    ROTMG_SPRITES.peachTree = bakeRotmgSprite([
+const ENV_SPR = {};
+function initEnvSprites() {
+    ENV_SPR.peach = bakeRotmgSprite([
         '...PPPP.....',
         '..PPllPP....',
         '.PPllllPP...',
@@ -497,7 +458,7 @@ function initRotmgEnvironmentSprites() {
         '...TTTT.....'
     ], { P: '#f48fb1', l: '#fce4ec', T: '#4e342e' }, 5, true);
 
-    ROTMG_SPRITES.pineTree = bakeRotmgSprite([
+    ENV_SPR.pine = bakeRotmgSprite([
         '....GGGG....',
         '..GGGGGGGG..',
         '.GGddddddGG.',
@@ -511,7 +472,7 @@ function initRotmgEnvironmentSprites() {
         '...TTTTTT...'
     ], { G: '#1b5e20', d: '#2e7d32', T: '#3e2723' }, 5, true);
 
-    ROTMG_SPRITES.bangTree = bakeRotmgSprite([
+    ENV_SPR.bang = bakeRotmgSprite([
         '...YYYYYY...',
         '.YYYYllYYYY.',
         'YYllllllllYY',
@@ -523,23 +484,13 @@ function initRotmgEnvironmentSprites() {
         '...TTTTTT...'
     ], { Y: '#fbc02d', l: '#fff59d', T: '#4e342e' }, 5, true);
 
-    ROTMG_SPRITES.mushroom = bakeRotmgSprite([
-        '..RRRRRR..',
-        '.RRwRRwRR.',
-        'RRRRRRRRRR',
-        'RRRRRRRRRR',
-        '..SSSSSS..',
-        '..SddddS..',
-        '..SSSSSS..'
-    ], { R: '#d32f2f', w: '#ffcdd2', S: '#cfd8dc', d: '#90a4ae' }, 4, true);
-
-    ROTMG_SPRITES.flowerPatch = bakeRotmgSprite([
+    ENV_SPR.flower = bakeRotmgSprite([
         'M.M',
         '.Y.',
         'M.M'
     ], { M: '#ea80fc', Y: '#ffea00' }, 3, false);
 
-    ROTMG_SPRITES.lanternDay = bakeRotmgSprite([
+    ENV_SPR.lanternDay = bakeRotmgSprite([
         '...SS...',
         '..SSSS..',
         '.SSSSSS.',
@@ -550,7 +501,7 @@ function initRotmgEnvironmentSprites() {
         '..SSSS..'
     ], { S: '#90a4ae', s: '#607d8b', Y: '#cfd8dc' }, 4, true);
 
-    ROTMG_SPRITES.lanternNight = bakeRotmgSprite([
+    ENV_SPR.lanternNight = bakeRotmgSprite([
         '...SS...',
         '..SSSS..',
         '.SSSSSS.',
@@ -560,1679 +511,819 @@ function initRotmgEnvironmentSprites() {
         '...SS...',
         '..SSSS..'
     ], { S: '#546e7a', s: '#37474f', Y: '#ffea00' }, 4, true);
-
-    // Linh thú to hơn 25% (pixelSize = 4)
-    ROTMG_SPRITES.pet_elephant = bakeRotmgSprite([
-        '.WWWW...',
-        'WWWWWW..',
-        'WWpWWWW.',
-        'WWWWWWWW',
-        '.W..W.WW'
-    ], { W: '#ffffff', p: '#ff4081' }, 4, true);
-
-    ROTMG_SPRITES.pet_bird = bakeRotmgSprite([
-        '..BB....',
-        '.BBBBY..',
-        'ccBBBB..',
-        '.BBBB...',
-        '..L.L...'
-    ], { B: '#29b6f6', c: '#e1f5fe', Y: '#ffb300', L: '#ff8f00' }, 4, true);
-
-    ROTMG_SPRITES.pet_phoenix = bakeRotmgSprite([
-        '...RR...',
-        'r.RRRRy.',
-        'rrRRRR..',
-        '.RRRR...',
-        '..Y.Y...'
-    ], { R: '#ff1744', r: '#ff9100', y: '#ffea00', Y: '#ffd54f' }, 4, true);
 }
-initRotmgEnvironmentSprites();
+initEnvSprites();
 
-// 4. CẤU HÌNH AVATAR & PHỤ KIỆN
-const SKIN_COLORS = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'];
-const HAIR_STYLES = {
-    male: [{ id: 0, name: 'Đầu trọc' }, { id: 1, name: 'Tóc ngắn' }, { id: 2, name: 'Búi đỉnh' }],
-    female: [{ id: 0, name: 'Búi củ tỏi' }, { id: 1, name: 'Tóc dài' }, { id: 2, name: 'Búi 2 bên' }]
-};
-const OUTFITS = {
-    male: [
-        { id: 0, name: 'Áo Lam', main: '#5c6bc0', trim: '#3949ab' },
-        { id: 1, name: 'Áo Nâu', main: '#795548', trim: '#4e342e' },
-        { id: 2, name: 'Cà Sa Vàng', main: '#e67e22', trim: '#d35400' },
-        { id: 3, name: 'Áo Xám', main: '#78909c', trim: '#455a64' }
-    ],
-    female: [
-        { id: 0, name: 'Áo Lam Nhạt', main: '#7986cb', trim: '#c5cae9' },
-        { id: 1, name: 'Áo Tràng Nâu', main: '#8d6e63', trim: '#d7ccc8' },
-        { id: 2, name: 'Áo Sen Hồng', main: '#d87093', trim: '#f8bbd0' },
-        { id: 3, name: 'Áo Trắng Tinh', main: '#eceff1', trim: '#b0bec5' }
-    ]
+const SKIN_LIST = ['#f4a27a', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
+const HAIR_LIST = [
+    { id: 0, name: 'Mái Ngang' },
+    { id: 1, name: 'Rẽ Ngôi' },
+    { id: 2, name: 'Búi Đỉnh' },
+    { id: 3, name: 'Tóc Dài' },
+    { id: 4, name: 'Đầu Trọc' }
+];
+const OUTFIT_LIST = [
+    { id: 0, name: 'Áo Lam', main: '#46829e', trim: '#6b5344', pants: '#233b46' },
+    { id: 1, name: 'Áo Nâu', main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
+    { id: 2, name: 'Áo Vàng', main: '#d89b3c', trim: '#8c5819', pants: '#37474f' },
+    { id: 3, name: 'Áo Hồng', main: '#c96b88', trim: '#7d3c50', pants: '#2d3748' }
+];
+
+let cfg = {
+    gender: 'male',
+    skin: SKIN_LIST[0],
+    hairStyle: 0,
+    hairColor: '#1a2c2e',
+    hairShade: '#364d47',
+    outfitId: 0
 };
 
-let avatarConfig = {
-    gender: 'male', skin: SKIN_COLORS[0], hairStyle: 1, hairColor: '#1a1a1a', outfitId: 0,
-    customShirt: null, customPants: null, customHat: null, customShoes: null
-};
+function buildCharacterMatrix(c, poseState) {
+    const r0 = '.HHHHHHHHH.';
+    const r1 = 'HHhHHHHhHHH';
+    const r2 = 'HHhHHHHhHHH';
+    const r3 = 'HSSSSSSSSSH';
+    const r4 = 'SS.EE.EE.SS';
+    const r5 = 'SS.EE.EE.SS';
+    const r6 = '.SS.MMM.SS.';
+    const r7 = '....SSS....';
+    const r8 = '..TTCCCCTT.';
+    const r9 = '.TT.CCCC.TT';
+    const r10 = 'TT..CCCC..T';
+    const r11 = 'SS..CCCC..S';
+
+    let r12 = '..PPPPPPP..';
+    let r13 = '..PPP.PPP..';
+    let r14 = '..PPP.PPP..';
+    let r15 = '..FF...FF..';
+
+    if (poseState === 1) {
+        r13 = '..PPPP.PP..';
+        r14 = '..PPP..PP..';
+        r15 = '..FF....FF.';
+    } else if (poseState === 2) {
+        r13 = '..PP.PPPP..';
+        r14 = '..PP..PPP..';
+        r15 = '.FF....FF..';
+    } else if (poseState === 3) {
+        return [
+            r0, r1, r2, r3, r4, r5, r6,
+            r7,
+            '..TTCCCCTT.',
+            '.TTTCCCCCTT',
+            '..PPPPPPPP.',
+            '.PPPPPPPPPP'
+        ];
+    }
+
+    const grid = [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15];
+
+    const style = c.hairStyle % 5;
+    if (style === 0) {
+        grid[2] = 'HHHHHHHHHHH';
+        grid[3] = 'HSSSSSSSSSH';
+    } else if (style === 1) {
+        grid[1] = 'HHh.HHh.HHH';
+        grid[2] = 'HH.HHHH.HHH';
+        grid[3] = 'HSSSSSSSSSH';
+    } else if (style === 2) {
+        grid[0] = '....HHH....';
+        grid[1] = '.HHHHHHHHH.';
+        grid[2] = 'HHhHHHHhHHH';
+    } else if (style === 3) {
+        for (let i = 3; i <= 10; i++) {
+            const arr = grid[i].split('');
+            arr[0] = 'H';
+            arr[10] = 'H';
+            grid[i] = arr.join('');
+        }
+    } else if (style === 4) {
+        grid[0] = '..SSSSSSS..';
+        grid[1] = '.SSSSSSSSS.';
+        grid[2] = 'SSSSSSSSSSS';
+    }
+
+    return grid;
+}
+
+function buildCharacterSprite(c, poseState) {
+    const out = OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0];
+    const palette = {
+        S: c.skin,
+        H: c.hairColor || '#1a2c2e',
+        h: c.hairShade || '#364d47',
+        E: '#141716',
+        M: '#f01e56',
+        C: out.main,
+        T: out.trim,
+        P: out.pants,
+        F: '#0f1211'
+    };
+    const grid = buildCharacterMatrix(c, poseState);
+    return bakeRotmgSprite(grid, palette, 5, true);
+}
 
 function initCreatorUI() {
-    const skinGroup = document.getElementById('skin-group');
-    SKIN_COLORS.forEach((color, idx) => {
-        const div = document.createElement('div');
-        div.className = 'color-swatch' + (idx === 0 ? ' active' : '');
-        div.style.background = color;
-        div.onclick = () => {
-            avatarConfig.skin = color;
-            document.querySelectorAll('#skin-group .color-swatch').forEach(el => el.classList.remove('active'));
-            div.classList.add('active');
+    const skinRow = document.getElementById('skin-row');
+    SKIN_LIST.forEach((col, i) => {
+        const d = document.createElement('div');
+        d.className = 'swatch' + (i === 0 ? ' active' : '');
+        d.style.background = col;
+        d.onclick = () => {
+            cfg.skin = col;
+            skinRow.querySelectorAll('.swatch').forEach(el => el.classList.remove('active'));
+            d.classList.add('active');
             renderPreview();
         };
-        skinGroup.appendChild(div);
-    });
-    updateGenderOptions();
-}
-
-function setGender(gender, btn) {
-    avatarConfig.gender = gender;
-    avatarConfig.hairStyle = 0;
-    avatarConfig.outfitId = 0;
-    document.querySelectorAll('#gender-group .opt-btn').forEach(el => el.classList.remove('active'));
-    btn.classList.add('active');
-    updateGenderOptions();
-}
-
-function updateGenderOptions() {
-    const hairGroup = document.getElementById('hair-group');
-    hairGroup.innerHTML = '';
-    HAIR_STYLES[avatarConfig.gender].forEach((h, idx) => {
-        const btn = document.createElement('button');
-        btn.className = 'opt-btn' + (idx === avatarConfig.hairStyle ? ' active' : '');
-        btn.innerText = h.name;
-        btn.onclick = () => {
-            avatarConfig.hairStyle = h.id;
-            document.querySelectorAll('#hair-group .opt-btn').forEach(el => el.classList.remove('active'));
-            btn.classList.add('active');
-            renderPreview();
-        };
-        hairGroup.appendChild(btn);
+        skinRow.appendChild(d);
     });
 
-    const outfitGroup = document.getElementById('outfit-group');
-    outfitGroup.innerHTML = '';
-    OUTFITS[avatarConfig.gender].forEach((o, idx) => {
-        const btn = document.createElement('button');
-        btn.className = 'opt-btn' + (idx === avatarConfig.outfitId ? ' active' : '');
-        btn.innerText = o.name;
-        btn.onclick = () => {
-            avatarConfig.outfitId = o.id;
-            document.querySelectorAll('#outfit-group .opt-btn').forEach(el => el.classList.remove('active'));
-            btn.classList.add('active');
+    const hairRow = document.getElementById('hair-row');
+    HAIR_LIST.forEach((h, i) => {
+        const b = document.createElement('button');
+        b.className = 'mini-btn' + (i === 0 ? ' active' : '');
+        b.textContent = h.name;
+        b.onclick = () => {
+            cfg.hairStyle = h.id;
+            hairRow.querySelectorAll('.mini-btn').forEach(el => el.classList.remove('active'));
+            b.classList.add('active');
             renderPreview();
         };
-        outfitGroup.appendChild(btn);
+        hairRow.appendChild(b);
+    });
+
+    const outfitRow = document.getElementById('outfit-row');
+    OUTFIT_LIST.forEach((o, i) => {
+        const b = document.createElement('button');
+        b.className = 'mini-btn' + (i === 0 ? ' active' : '');
+        b.textContent = o.name;
+        b.onclick = () => {
+            cfg.outfitId = o.id;
+            outfitRow.querySelectorAll('.mini-btn').forEach(el => el.classList.remove('active'));
+            b.classList.add('active');
+            renderPreview();
+        };
+        outfitRow.appendChild(b);
     });
     renderPreview();
 }
 
+function setGender(g, btn) {
+    cfg.gender = g;
+    document.querySelectorAll('#gender-row .mini-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPreview();
+}
+
 function renderPreview() {
-    const pCanvas = document.getElementById('previewCanvas');
-    const pCtx = pCanvas.getContext('2d');
-    pCtx.imageSmoothingEnabled = false;
-    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-    const spr = buildRotmgCharacterSprite(avatarConfig, 0);
-    pCtx.fillStyle = 'rgba(0,0,0,0.45)';
-    pCtx.beginPath(); pCtx.ellipse(50, 88, 24, 8, 0, 0, Math.PI * 2); pCtx.fill();
-    pCtx.drawImage(spr, 50 - spr.width * 0.75, 88 - spr.height * 1.45, spr.width * 1.5, spr.height * 1.5);
+    const pc = document.getElementById('previewCanvas');
+    const px = pc.getContext('2d');
+    px.imageSmoothingEnabled = false;
+    px.clearRect(0, 0, pc.width, pc.height);
+    px.fillStyle = 'rgba(20, 24, 20, 0.16)';
+    px.beginPath();
+    px.ellipse(42, 86, 26, 5, 0, 0, Math.PI * 2);
+    px.fill();
+    const spr = buildCharacterSprite(cfg, 0);
+    px.drawImage(spr, Math.round(42 - spr.width / 2), Math.round(86 - spr.height + 2));
 }
 
-// Nhân vật to hơn 25% (pixelSize = 5 trong bakeRotmgSprite)
-function buildRotmgCharacterSprite(cfg, poseState) {
-    const outfitList = OUTFITS[cfg.gender] || OUTFITS.male;
-    const baseOutfit = outfitList[cfg.outfitId] || outfitList[0];
-    const palette = {
-        S: cfg.skin,
-        H: cfg.hairColor || '#181818',
-        C: cfg.customShirt || baseOutfit.main,
-        T: baseOutfit.trim,
-        P: cfg.customPants || '#263238',
-        F: cfg.customShoes || '#111111',
-        E: '#0c0e0c',
-        A: cfg.customHat || '#f4d03f'
-    };
+const MAP_W = 2000;
+const MAP_H = 1700;
+const TEMPLE = { x: 720, y: 270, w: 560, h: 320 };
+const POND = { x: 1420, y: 920, r: 165 };
 
-    let grid = [];
-    if (poseState === 3) {
-        grid = [
-            '...HHH...',
-            '..SSSSS..',
-            '..SE.ES..',
-            '..SSSSS..',
-            '.CCCCCCC.',
-            '.CCCTCCC.',
-            'PPPPPPPPP',
-            '.PP...PP.'
-        ];
-    } else {
-        const legRow = (poseState === 1) ? '..FF..F..' : ((poseState === 2) ? '...F..FF.' : '..FF.FF..');
-        grid = [
-            '...HHH...',
-            '..SSSSS..',
-            '..SE.ES..',
-            '..SSSSS..',
-            '.CCCCCCC.',
-            'SCCCTccCS',
-            '.CCCCCCC.',
-            '..PP.PP..',
-            legRow
-        ];
-        palette.c = palette.C;
-    }
-
-    if (cfg.gender === 'male') {
-        if (cfg.hairStyle === 0) {
-            grid[0] = '...SSS...';
-        } else if (cfg.hairStyle === 2) {
-            grid[0] = '....H....';
-            grid[1] = '..SSSSS..';
-        }
-    } else {
-        if (cfg.hairStyle === 0) {
-            grid[0] = '...HHH...';
-        } else if (cfg.hairStyle === 1) {
-            grid[0] = '..HHHHH..';
-            grid[1] = '.HSSSSSH.';
-            grid[2] = '.HSE.ESH.';
-            grid[3] = '.HSSSSSH.';
-        } else if (cfg.hairStyle === 2) {
-            grid[0] = '.HH...HH.';
-        }
-    }
-
-    if (cfg.customHat) {
-        grid[0] = '..AAAAA..';
-    }
-
-    return bakeRotmgSprite(grid, palette, 5, true);
+function getVNTime() {
+    const d = new Date();
+    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+    return new Date(utc + 3600000 * 7);
 }
-
-// 5. THỜI GIAN GMT+7 & NGÀY/ĐÊM
-function getVietnamTime() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * 7));
-}
-
-function isNightTime(vnDate) {
+function isNight(vnDate) {
     const h = vnDate.getHours();
     return (h >= 18 || h < 6);
 }
 
-// 6. DỮ LIỆU BẢN ĐỒ
-const MAP_WIDTH = 2200;
-const MAP_HEIGHT = 1800;
-const TEMPLE = { x: 820, y: 290, w: 560, h: 350 };
-const GATE = { x: 1100, y: 740 };
+function getRiverY(x) { return 1240 + Math.sin(x * 0.0038) * 52; }
+const RIVER_HALF = 56;
+const BRIDGE_X = 1000;
 
-const HERMITAGES = [
-    { x: 430, y: 360, r: 44, name: 'Chánh Kiến' },
-    { x: 560, y: 550, r: 44, name: 'Chánh Tư Duy' },
-    { x: 350, y: 720, r: 44, name: 'Chánh Ngữ' },
-    { x: 640, y: 770, r: 44, name: 'Chánh Nghiệp' },
-    { x: 1580, y: 350, r: 44, name: 'Chánh Mạng' },
-    { x: 1750, y: 530, r: 44, name: 'Chánh Tinh Tấn' },
-    { x: 1520, y: 700, r: 44, name: 'Chánh Niệm' },
-    { x: 1840, y: 790, r: 44, name: 'Chánh Định' }
+const LANTERNS = [
+    { x: 920, y: 630 }, { x: 1080, y: 630 }, { x: 910, y: 790 }, { x: 1090, y: 790 },
+    { x: 900, y: 1030 }, { x: 1100, y: 1030 }, { x: 920, y: 1380 }, { x: 1080, y: 1380 }
 ];
 
-const POND = { x: 1520, y: 960, r: 175 };
+const TREES = [
+    { x: 220, y: 310, t: 'peach' }, { x: 580, y: 330, t: 'peach' }, { x: 1420, y: 290, t: 'peach' },
+    { x: 200, y: 590, t: 'bang' },  { x: 660, y: 620, t: 'bang' },  { x: 1780, y: 440, t: 'bang' },
+    { x: 160, y: 880, t: 'pine' },  { x: 450, y: 960, t: 'pine' },  { x: 1780, y: 880, t: 'pine' },
+    { x: 280, y: 1520, t: 'peach' },{ x: 650, y: 1560, t: 'bang' },{ x: 1420, y: 1520, t: 'pine' }
+];
 
-const LOTUS_FLOWERS = [];
-for (let i = 0; i < 14; i++) {
-    const ang = Math.PI * 0.12 + (i / 13) * Math.PI * 0.76;
-    const dist = 48 + (i % 3) * 38;
-    LOTUS_FLOWERS.push({
-        x: POND.x + Math.cos(ang) * dist,
-        y: POND.y + Math.sin(ang) * dist * 0.75,
-        phase: i * 0.7, isPink: i % 2 === 0
+const FLOWERS = [];
+for (let i = 0; i < 70; i++) {
+    FLOWERS.push({
+        x: 70 + ((i * 313) % (MAP_W - 140)),
+        y: 250 + ((i * 479) % (MAP_H - 290))
     });
 }
 
 const KOI_COLORS = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff', '#f50057'];
-const KOI_FISH = KOI_COLORS.map((col, idx) => ({
-    color: col,
-    angle: idx * 0.9,
-    radius: 42 + idx * 15,
-    speed: 0.00018 + (idx % 3) * 0.00006
+const KOI_LIST = KOI_COLORS.map((col, idx) => ({
+    col, ang: idx * 0.9, rad: 38 + idx * 14, spd: 0.00018 + (idx % 3) * 0.00005
 }));
 
-const STONE_LANTERNS = [
-    {x: 1020, y: 670}, {x: 1180, y: 670}, {x: 1010, y: 820}, {x: 1190, y: 820},
-    {x: 990, y: 1060}, {x: 1210, y: 1060}, {x: 1010, y: 1420}, {x: 1190, y: 1420},
-    {x: 490, y: 420}, {x: 1630, y: 410}
-];
+const staticCanvas = document.createElement('canvas');
+staticCanvas.width = MAP_W;
+staticCanvas.height = MAP_H;
+const staticCtx = staticCanvas.getContext('2d', { alpha: false });
+staticCtx.imageSmoothingEnabled = false;
+let cachedNight = null;
 
-const TREES = [
-    { x: 240, y: 310, type: 'peach', hasFruit: true },
-    { x: 660, y: 330, type: 'peach', hasFruit: true },
-    { x: 1500, y: 290, type: 'peach', hasFruit: true },
-    { x: 210, y: 590, type: 'bang', hasFruit: true },
-    { x: 740, y: 620, type: 'bang', hasFruit: false },
-    { x: 1960, y: 440, type: 'bang', hasFruit: true },
-    { x: 150, y: 890, type: 'pine', hasFruit: false },
-    { x: 460, y: 970, type: 'pine', hasFruit: true },
-    { x: 1960, y: 890, type: 'pine', hasFruit: false },
-    { x: 300, y: 1560, type: 'peach', hasFruit: true },
-    { x: 680, y: 1620, type: 'bang', hasFruit: true },
-    { x: 1520, y: 1580, type: 'pine', hasFruit: true },
-    { x: 1880, y: 1640, type: 'peach', hasFruit: true }
-];
+function buildStaticMap(night) {
+    if (cachedNight === night) return;
+    cachedNight = night;
+    const s = staticCtx;
+    s.imageSmoothingEnabled = false;
 
-const MUSHROOMS = [
-    { x: 190, y: 260 }, { x: 480, y: 290 }, { x: 1420, y: 650 },
-    { x: 1890, y: 660 }, { x: 260, y: 1120 }, { x: 1790, y: 1460 }, { x: 520, y: 1480 }
-];
-
-const FLOWER_PATCHES = [];
-for (let i = 0; i < 85; i++) {
-    FLOWER_PATCHES.push({
-        x: 70 + ((i * 337) % (MAP_WIDTH - 140)),
-        y: 250 + ((i * 521) % (MAP_HEIGHT - 290))
-    });
-}
-
-function getRiverCenterY(x) { return 1280 + Math.sin(x * 0.0035) * 60; }
-const RIVER_HALF_H = 62;
-const BRIDGE_X = 1100;
-
-const CLOUDS = [
-    { x: 200, y: 72, speed: 0.14, w: 140 },
-    { x: 850, y: 55, speed: 0.10, w: 180 },
-    { x: 1550, y: 82, speed: 0.12, w: 150 }
-];
-let heron = { active: false, x: -100, y: 1240, lastTriggerMin: -1 };
-let boat = { active: false, x: -120, lastTriggerMin: -1 };
-
-// Cây Bồ Đề Nguyện Ước tại (1100, 430)
-const WISH_TREE = { x: 1100, y: 430, radius: 45 };
-let communityWishes = [
-    { text: "Nguyện cầu vạn vật an lành, tâm không vướng bận.", author: "Hành Giả Tôn" },
-    { text: "Chúc tất cả mọi người có một ngày thiền định an tịnh.", author: "Mèo Đen" }
-];
-
-// ============================================================================
-// STATIC OFFSCREEN MAP LAYER
-// ============================================================================
-const staticMapCanvas = document.createElement('canvas');
-staticMapCanvas.width = MAP_WIDTH;
-staticMapCanvas.height = MAP_HEIGHT;
-const staticMapCtx = staticMapCanvas.getContext('2d', { alpha: false });
-staticMapCtx.imageSmoothingEnabled = false;
-let cachedMapNightState = null;
-
-function rebuildStaticMap(isNight) {
-    if (cachedMapNightState === isNight) return;
-    cachedMapNightState = isNight;
-    const sCtx = staticMapCtx;
-    sCtx.imageSmoothingEnabled = false;
-
-    const tileSize = 32;
-    for (let y = 200; y < MAP_HEIGHT; y += tileSize) {
-        for (let x = 0; x < MAP_WIDTH; x += tileSize) {
-            const hash = Math.sin(x * 0.0045) + Math.cos(y * 0.0045);
-            const checker = ((x / tileSize) + (y / tileSize)) % 2 === 0;
-            if (isNight) {
-                sCtx.fillStyle = (hash > 0.35)
-                    ? (checker ? '#1a2617' : '#162113')
-                    : (checker ? '#152b17' : '#112413');
-            } else {
-                sCtx.fillStyle = (hash > 0.35)
-                    ? (checker ? '#4c6638' : '#435b31')
-                    : (checker ? '#2e7d32' : '#266e2a');
-            }
-            sCtx.fillRect(x, y, tileSize, tileSize);
+    const tile = 32;
+    for (let y = 210; y < MAP_H; y += tile) {
+        for (let x = 0; x < MAP_W; x += tile) {
+            const v = Math.sin(x * 0.0045) + Math.cos(y * 0.0045);
+            const alt = ((x / tile) + (y / tile)) % 2 === 0;
+            s.fillStyle = night
+                ? (v > 0.3 ? (alt ? '#192517' : '#152013') : (alt ? '#142916' : '#102212'))
+                : (v > 0.3 ? (alt ? '#4c6638' : '#435b31') : (alt ? '#2e7d32' : '#266e2a'));
+            s.fillRect(x, y, tile, tile);
         }
     }
 
-    drawMistyMountainsStatic(sCtx, isNight);
-    drawBrickPaths(sCtx, isNight);
-
-    const riverShoreOffsets = [
-        { half: RIVER_HALF_H + 14, color: isNight ? '#263228' : '#68785a' },
-        { half: RIVER_HALF_H + 6,  color: isNight ? '#1b3a4b' : '#4a7c9b' },
-        { half: RIVER_HALF_H,      color: isNight ? '#154360' : '#4b86c2' }
-    ];
-    riverShoreOffsets.forEach(layer => {
-        sCtx.fillStyle = layer.color;
-        sCtx.beginPath();
-        sCtx.moveTo(0, getRiverCenterY(0) - layer.half);
-        for (let x = 0; x <= MAP_WIDTH; x += 24) { sCtx.lineTo(x, getRiverCenterY(x) - layer.half); }
-        for (let x = MAP_WIDTH; x >= 0; x -= 24) { sCtx.lineTo(x, getRiverCenterY(x) + layer.half); }
-        sCtx.closePath(); sCtx.fill();
-    });
-
-    const bridgeCenterY = getRiverCenterY(BRIDGE_X);
-    sCtx.fillStyle = isNight ? '#3e2723' : '#6d4c41';
-    sCtx.fillRect(BRIDGE_X - 54, bridgeCenterY - RIVER_HALF_H - 14, 108, RIVER_HALF_H * 2 + 28);
-    sCtx.strokeStyle = '#111'; sCtx.lineWidth = 3;
-    sCtx.strokeRect(BRIDGE_X - 54, bridgeCenterY - RIVER_HALF_H - 14, 108, RIVER_HALF_H * 2 + 28);
-    for (let by = bridgeCenterY - RIVER_HALF_H - 6; by < bridgeCenterY + RIVER_HALF_H + 10; by += 14) {
-        sCtx.beginPath(); sCtx.moveTo(BRIDGE_X - 54, by); sCtx.lineTo(BRIDGE_X + 54, by); sCtx.stroke();
-    }
-
-    sCtx.save();
-    sCtx.translate(POND.x, POND.y);
-    sCtx.fillStyle = isNight ? '#263228' : '#68785a';
-    sCtx.beginPath(); sCtx.arc(0, 0, POND.r + 12, -0.04, Math.PI + 0.04, false); sCtx.closePath(); sCtx.fill();
-
-    sCtx.fillStyle = isNight ? '#123c54' : '#3a7bb8';
-    sCtx.strokeStyle = '#1a241a';
-    sCtx.lineWidth = 4;
-    sCtx.beginPath(); sCtx.arc(0, 0, POND.r, 0, Math.PI, false); sCtx.closePath(); sCtx.fill(); sCtx.stroke();
-    sCtx.restore();
-
-    FLOWER_PATCHES.forEach(fp => {
-        const ry = getRiverCenterY(fp.x);
-        if (Math.abs(fp.y - ry) < RIVER_HALF_H + 22) return;
-        if (fp.y >= POND.y - 16 && Math.hypot(fp.x - POND.x, fp.y - POND.y) < POND.r + 22) return;
-        if (fp.x > TEMPLE.x - 20 && fp.x < TEMPLE.x + TEMPLE.w + 20 && fp.y > TEMPLE.y - 20 && fp.y < TEMPLE.y + TEMPLE.h + 20) return;
-        sCtx.drawImage(ROTMG_SPRITES.flowerPatch, fp.x, fp.y);
-    });
-
-    MUSHROOMS.forEach(m => {
-        sCtx.fillStyle = 'rgba(0,0,0,0.35)';
-        sCtx.beginPath(); sCtx.ellipse(m.x + 18, m.y + 30, 14, 5, 0, 0, Math.PI * 2); sCtx.fill();
-        sCtx.drawImage(ROTMG_SPRITES.mushroom, m.x, m.y);
-    });
-
-    HERMITAGES.forEach(h => drawOctagonHermitage(sCtx, h, isNight));
-    drawIndoThaiOpenTempleStatic(sCtx, isNight);
-    drawMuMonGate(sCtx, GATE.x, GATE.y, isNight);
-
-    const lanternSpr = isNight ? ROTMG_SPRITES.lanternNight : ROTMG_SPRITES.lanternDay;
-    STONE_LANTERNS.forEach(l => {
-        sCtx.fillStyle = 'rgba(0,0,0,0.35)';
-        sCtx.beginPath(); sCtx.ellipse(l.x, l.y, 12, 4, 0, 0, Math.PI * 2); sCtx.fill();
-        sCtx.drawImage(lanternSpr, l.x - lanternSpr.width / 2, l.y - lanternSpr.height + 4);
-    });
-
-    TREES.forEach(t => drawRotmgPixelTree(sCtx, t));
-
-    // Vẽ Cây Bồ Đề Nguyện Ước đặc biệt tại (1100, 430)
-    drawWishTreeStatic(sCtx, WISH_TREE.x, WISH_TREE.y, isNight);
-
-    sCtx.strokeStyle = '#0c0e0c';
-    sCtx.lineWidth = 18;
-    sCtx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
-}
-
-function drawMistyMountainsStatic(sCtx, isNight) {
-    const skyH = 235;
-    const skyGrad = sCtx.createLinearGradient(0, 0, 0, skyH);
-    if (isNight) {
+    const skyH = 225;
+    const skyGrad = s.createLinearGradient(0, 0, 0, skyH);
+    if (night) {
         skyGrad.addColorStop(0, '#0a101d');
-        skyGrad.addColorStop(0.6, '#162235');
-        skyGrad.addColorStop(1, '#1d2d24');
+        skyGrad.addColorStop(0.65, '#162235');
+        skyGrad.addColorStop(1, '#1b2b22');
     } else {
         skyGrad.addColorStop(0, '#81c3f7');
-        skyGrad.addColorStop(0.55, '#cce6fa');
+        skyGrad.addColorStop(0.6, '#cce6fa');
         skyGrad.addColorStop(1, '#dce8dc');
     }
-    sCtx.fillStyle = skyGrad;
-    sCtx.fillRect(0, 0, MAP_WIDTH, skyH);
+    s.fillStyle = skyGrad;
+    s.fillRect(0, 0, MAP_W, skyH);
 
-    if (isNight) {
-        sCtx.fillStyle = '#fff9c4'; sCtx.beginPath(); sCtx.arc(1850, 52, 22, 0, Math.PI * 2); sCtx.fill();
-        sCtx.fillStyle = '#fff';
-        for (let s = 0; s < 35; s++) {
-            sCtx.fillRect((s * 197) % MAP_WIDTH, 15 + (s * 43) % 85, 2, 2);
-        }
+    s.fillStyle = night ? 'rgba(26, 40, 56, 0.75)' : 'rgba(104, 142, 152, 0.65)';
+    s.beginPath();
+    s.moveTo(0, skyH); s.lineTo(0, 120); s.lineTo(260, 46); s.lineTo(580, 128);
+    s.lineTo(940, 38); s.lineTo(1320, 110); s.lineTo(1680, 42); s.lineTo(MAP_W, 110);
+    s.lineTo(MAP_W, skyH); s.closePath(); s.fill();
+
+    const mistGrad = s.createLinearGradient(0, 95, 0, skyH + 24);
+    mistGrad.addColorStop(0, night ? 'rgba(27,43,34,0)' : 'rgba(232,244,242,0)');
+    mistGrad.addColorStop(0.65, night ? 'rgba(27,43,34,0.78)' : 'rgba(220,238,224,0.86)');
+    mistGrad.addColorStop(1, night ? 'rgba(27,43,34,0)' : 'rgba(76,102,56,0)');
+    s.fillStyle = mistGrad;
+    s.fillRect(0, 95, MAP_W, skyH - 95 + 24);
+
+    s.strokeStyle = night ? '#4a382e' : '#9e6b4b';
+    s.lineWidth = 68;
+    s.beginPath();
+    s.moveTo(1000, 590);
+    for (let y = 590; y <= 1580; y += 20) {
+        const wx = (y > 1150 && y < 1330) ? 0 : Math.sin((y - 590) * 0.008) * 28;
+        s.lineTo(1000 + wx, y);
     }
+    s.stroke();
 
-    sCtx.fillStyle = isNight ? 'rgba(30, 44, 62, 0.55)' : 'rgba(130, 165, 185, 0.45)';
-    sCtx.beginPath();
-    sCtx.moveTo(0, skyH); sCtx.lineTo(0, 95); sCtx.lineTo(310, 28); sCtx.lineTo(640, 105);
-    sCtx.lineTo(980, 22); sCtx.lineTo(1320, 88); sCtx.lineTo(1680, 25);
-    sCtx.lineTo(2020, 95); sCtx.lineTo(MAP_WIDTH, 55); sCtx.lineTo(MAP_WIDTH, skyH);
-    sCtx.closePath(); sCtx.fill();
+    s.fillStyle = night ? '#143f59' : '#4682be';
+    s.beginPath();
+    s.moveTo(0, getRiverY(0) - RIVER_HALF);
+    for (let x = 0; x <= MAP_W; x += 24) s.lineTo(x, getRiverY(x) - RIVER_HALF);
+    for (let x = MAP_W; x >= 0; x -= 24) s.lineTo(x, getRiverY(x) + RIVER_HALF);
+    s.closePath(); s.fill();
 
-    sCtx.fillStyle = isNight ? 'rgba(24, 38, 46, 0.8)' : 'rgba(98, 138, 148, 0.65)';
-    sCtx.beginPath();
-    sCtx.moveTo(0, skyH); sCtx.lineTo(0, 125); sCtx.lineTo(220, 52); sCtx.lineTo(520, 135);
-    sCtx.lineTo(820, 42); sCtx.lineTo(1140, 112); sCtx.lineTo(1420, 34);
-    sCtx.lineTo(1750, 125); sCtx.lineTo(2050, 48); sCtx.lineTo(MAP_WIDTH, 115);
-    sCtx.lineTo(MAP_WIDTH, skyH); sCtx.closePath(); sCtx.fill();
+    const by = getRiverY(BRIDGE_X);
+    s.fillStyle = night ? '#3e2723' : '#6d4c41';
+    s.fillRect(BRIDGE_X - 50, by - RIVER_HALF - 10, 100, RIVER_HALF * 2 + 20);
+    s.strokeStyle = '#111'; s.lineWidth = 3;
+    s.strokeRect(BRIDGE_X - 50, by - RIVER_HALF - 10, 100, RIVER_HALF * 2 + 20);
 
-    const mistGrad = sCtx.createLinearGradient(0, 95, 0, skyH + 28);
-    if (isNight) {
-        mistGrad.addColorStop(0, 'rgba(26, 40, 38, 0)');
-        mistGrad.addColorStop(0.55, 'rgba(34, 52, 46, 0.72)');
-        mistGrad.addColorStop(0.82, 'rgba(28, 46, 32, 0.94)');
-        mistGrad.addColorStop(1, 'rgba(28, 46, 32, 0)');
-    } else {
-        mistGrad.addColorStop(0, 'rgba(232, 244, 242, 0)');
-        mistGrad.addColorStop(0.55, 'rgba(225, 240, 234, 0.78)');
-        mistGrad.addColorStop(0.82, 'rgba(210, 232, 214, 0.95)');
-        mistGrad.addColorStop(1, 'rgba(76, 102, 56, 0)');
-    }
-    sCtx.fillStyle = mistGrad;
-    sCtx.fillRect(0, 95, MAP_WIDTH, skyH - 95 + 28);
-}
+    s.save();
+    s.translate(POND.x, POND.y);
+    s.fillStyle = night ? '#263228' : '#68785a';
+    s.beginPath(); s.arc(0, 0, POND.r + 10, 0, Math.PI, false); s.closePath(); s.fill();
+    s.fillStyle = night ? '#123c54' : '#3a7bb8';
+    s.strokeStyle = '#141c14'; s.lineWidth = 4;
+    s.beginPath(); s.arc(0, 0, POND.r, 0, Math.PI, false); s.closePath(); s.fill(); s.stroke();
+    s.restore();
 
-function drawRotmgPixelTree(ctx, t) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
-    ctx.beginPath(); ctx.ellipse(t.x, t.y + 4, 24, 9, 0, 0, Math.PI * 2); ctx.fill();
+    FLOWERS.forEach(f => {
+        if (Math.abs(f.y - getRiverY(f.x)) < RIVER_HALF + 18) return;
+        if (f.y >= POND.y - 12 && Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 18) return;
+        if (f.x > TEMPLE.x - 16 && f.x < TEMPLE.x + TEMPLE.w + 16 && f.y > TEMPLE.y - 16 && f.y < TEMPLE.y + TEMPLE.h + 16) return;
+        s.drawImage(ENV_SPR.flower, f.x, f.y);
+    });
 
-    let spr = ROTMG_SPRITES.peachTree;
-    if (t.type === 'pine') spr = ROTMG_SPRITES.pineTree;
-    else if (t.type === 'bang') spr = ROTMG_SPRITES.bangTree;
-
-    ctx.drawImage(spr, Math.round(t.x - spr.width / 2), Math.round(t.y - spr.height + 8));
-}
-
-function drawWishTreeStatic(ctx, wx, wy, isNight) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.beginPath(); ctx.ellipse(wx, wy + 6, 32, 12, 0, 0, Math.PI * 2); ctx.fill();
-
-    // Thân cây Bồ Đề vàng óng rực rỡ hơn
-    ctx.fillStyle = isNight ? '#5d4037' : '#8d6e63';
-    ctx.fillRect(wx - 10, wy - 30, 20, 40);
-    ctx.strokeStyle = '#111'; ctx.lineWidth = 3; ctx.strokeRect(wx - 10, wy - 30, 20, 40);
-
-    // Tán lá bồ đề hình tim đặc trưng
-    ctx.fillStyle = isNight ? '#2e7d32' : '#66bb6a';
-    ctx.beginPath();
-    ctx.arc(wx, wy - 55, 36, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = '#f4d03f';
-    ctx.font = 'bold 11px "Courier New", monospace'; ctx.textAlign = 'center';
-    ctx.fillText('🌿 Cây Nguyện Ước', wx, wy - 98);
-}
-
-function drawMapOptimized(ctx, time, isNight, isAlmsTime, camLeft, camTop, camRight, camBottom) {
-    rebuildStaticMap(isNight);
-
-    const sx = Math.max(0, camLeft);
-    const sy = Math.max(0, camTop);
-    const sw = Math.min(MAP_WIDTH, camRight) - sx;
-    const sh = Math.min(MAP_HEIGHT, camBottom) - sy;
-    if (sw > 0 && sh > 0) {
-        ctx.drawImage(staticMapCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
-    }
-
-    if (camTop < 245) {
-        drawDynamicWaterfallCloudsAndMist(ctx, time, isNight, camLeft, camRight);
-    }
-    if (camBottom > 1180 && camTop < 1380) {
-        drawDynamicRiverRipples(ctx, time, isNight, camLeft, camRight);
-    }
-    if (camRight > POND.x - POND.r - 30 && camLeft < POND.x + POND.r + 30 &&
-        camBottom > POND.y - 50 && camTop < POND.y + POND.r + 30) {
-        drawDynamicPondLife(ctx, time, isNight);
-    }
+    s.fillStyle = night ? '#4a3d31' : '#d7bfa0';
+    s.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
+    s.strokeStyle = '#111'; s.lineWidth = 4;
+    s.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
 
     const cx = TEMPLE.x + TEMPLE.w / 2;
     const cy = TEMPLE.y + 125;
-    if (camRight > cx - 160 && camLeft < cx + 160 && camBottom > cy - 160 && camTop < cy + 160) {
-        drawGiantBuddhaAura(ctx, cx, cy, time, isNight);
-    }
+    s.fillStyle = '#f39c12'; s.strokeStyle = '#111'; s.lineWidth = 2.5;
+    s.fillRect(cx - 42, cy - 8, 84, 18); s.strokeRect(cx - 42, cy - 8, 84, 18);
+    s.fillRect(cx - 26, cy - 42, 52, 34); s.strokeRect(cx - 26, cy - 42, 52, 34);
+    s.fillRect(cx - 16, cy - 72, 32, 30); s.strokeRect(cx - 16, cy - 72, 32, 30);
+    s.fillStyle = '#1c2833';
+    s.fillRect(cx - 16, cy - 78, 32, 7);
 
-    if (isNight) {
-        for (let i = 0; i < STONE_LANTERNS.length; i++) {
-            const l = STONE_LANTERNS[i];
-            if (l.x >= camLeft - 60 && l.x <= camRight + 60 && l.y >= camTop - 60 && l.y <= camBottom + 60) {
-                drawStoneLanternGlow(ctx, l.x, l.y, time);
-            }
-        }
-    }
-
-    if (isAlmsTime) {
-        for (let i = 0; i < TREES.length; i++) {
-            const t = TREES[i];
-            if (t.hasFruit && t.x >= camLeft - 80 && t.x <= camRight + 80 && t.y >= camTop - 120 && t.y <= camBottom + 50) {
-                drawTreeFruitsOnly(ctx, t, i, time);
-            }
-        }
-    }
-
-    // Vẽ hiệu ứng thời tiết Mưa nếu được bật
-    if (currentWeather === 'rainy') {
-        drawRainEffect(ctx, time, camLeft, camTop, camRight, camBottom);
-    }
-}
-
-function drawRainEffect(ctx, time, camLeft, camTop, camRight, camBottom) {
-    ctx.strokeStyle = 'rgba(129, 212, 250, 0.6)';
-    ctx.lineWidth = 1.5;
-    const dropSpeed = 22;
-    const dropLen = 18;
-    const shift = (time * 0.05) % 100;
-    
-    for (let rx = Math.floor(camLeft / 40) * 40; rx < camRight + 40; rx += 40) {
-        for (let ry = Math.floor(camTop / 60) * 60; ry < camBottom + 60; ry += 60) {
-            const px = rx + ((ry * 13) % 35);
-            const py = ((ry + shift * 2) % (camBottom - camTop + 100)) + camTop - 50;
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(px - 4, py + dropLen);
-            ctx.stroke();
-        }
-    }
-}
-
-function drawDynamicWaterfallCloudsAndMist(ctx, time, isNight, camLeft, camRight) {
-    const wfX = 1408;
-    if (wfX + 60 >= camLeft && wfX - 60 <= camRight) {
-        ctx.fillStyle = isNight ? '#4fc3f7' : '#e1f5fe';
-        ctx.fillRect(wfX, 38, 28, 165);
-        ctx.fillStyle = '#ffffff';
-        const drop = (time * 0.08) % 24;
-        for (let wy = 42; wy < 190; wy += 24) {
-            ctx.fillRect(wfX + 4, wy + drop * 0.5, 6, 10);
-            ctx.fillRect(wfX + 18, wy + 8 + drop * 0.5, 6, 10);
-        }
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        ctx.beginPath(); ctx.ellipse(wfX + 14, 198, 34 + Math.sin(time * 0.006) * 4, 9, 0, 0, Math.PI * 2); ctx.fill();
-    }
-
-    CLOUDS.forEach(c => {
-        if (c.x + 100 >= camLeft && c.x - 50 <= camRight) {
-            ctx.fillStyle = isNight ? 'rgba(180, 200, 220, 0.2)' : 'rgba(255, 255, 255, 0.72)';
-            ctx.fillRect(Math.round(c.x), c.y, 64, 16);
-            ctx.fillRect(Math.round(c.x + 12), c.y - 10, 40, 12);
-        }
+    const lSpr = night ? ENV_SPR.lanternNight : ENV_SPR.lanternDay;
+    LANTERNS.forEach(l => {
+        s.fillStyle = 'rgba(0,0,0,0.35)';
+        s.beginPath(); s.ellipse(l.x, l.y, 11, 4, 0, 0, Math.PI * 2); s.fill();
+        s.drawImage(lSpr, l.x - lSpr.width / 2, l.y - lSpr.height + 4);
     });
 
-    const drift = Math.sin(time * 0.0005) * 40;
-    ctx.fillStyle = isNight ? 'rgba(45, 70, 65, 0.25)' : 'rgba(235, 248, 244, 0.35)';
-    for (let mx = Math.floor(camLeft / 320) * 320; mx < camRight + 320; mx += 320) {
-        ctx.beginPath();
-        ctx.ellipse(mx + drift, 195, 170, 24, 0, 0, Math.PI * 2);
-        ctx.fill();
-    }
+    TREES.forEach(t => {
+        s.fillStyle = 'rgba(0,0,0,0.38)';
+        s.beginPath(); s.ellipse(t.x, t.y + 4, 24, 9, 0, 0, Math.PI * 2); s.fill();
+        const spr = ENV_SPR[t.t] || ENV_SPR.peach;
+        s.drawImage(spr, Math.round(t.x - spr.width / 2), Math.round(t.y - spr.height + 8));
+    });
+
+    s.strokeStyle = '#0c0e0c'; s.lineWidth = 16;
+    s.strokeRect(0, 0, MAP_W, MAP_H);
 }
 
-function drawBrickPaths(ctx, isNight) {
-    ctx.save();
-    ctx.lineCap = 'square'; ctx.lineJoin = 'miter';
-    ctx.strokeStyle = isNight ? '#4e3b31' : '#9e6b4b';
-    ctx.lineWidth = 72;
-    ctx.beginPath();
-    ctx.moveTo(1100, 640);
-    for (let y = 640; y <= 1650; y += 20) {
-        const waveX = (y > 1180 && y < 1380) ? 0 : Math.sin((y - 640) * 0.008) * 32;
-        ctx.lineTo(1100 + waveX, y);
-    }
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(1100, 1620); ctx.quadraticCurveTo(850, 1660, 420, 1740);
-    ctx.moveTo(1100, 1620); ctx.lineTo(1100, 1790);
-    ctx.moveTo(1100, 1620); ctx.quadraticCurveTo(1350, 1660, 1780, 1740);
-    ctx.stroke();
-
-    ctx.strokeStyle = isNight ? '#362720' : '#7a4f35';
-    ctx.lineWidth = 2;
-    for (let y = 650; y <= 1610; y += 22) {
-        const waveX = (y > 1180 && y < 1380) ? 0 : Math.sin((y - 640) * 0.008) * 32;
-        ctx.beginPath(); ctx.moveTo(1066 + waveX, y); ctx.lineTo(1134 + waveX, y); ctx.stroke();
-    }
-    ctx.restore();
-}
-
-function drawDynamicRiverRipples(ctx, time, isNight, camLeft, camRight) {
-    ctx.fillStyle = isNight ? 'rgba(129, 212, 250, 0.35)' : 'rgba(215, 238, 255, 0.72)';
-    const startX = Math.max(20, Math.floor(camLeft / 64) * 64);
-    const endX = Math.min(MAP_WIDTH, camRight + 64);
-    const shift = Math.floor((time * 0.015) % 16);
-
-    for (let x = startX; x < endX; x += 64) {
-        const cy = Math.round(getRiverCenterY(x));
-        for (let step = 0; step < 3; step++) {
-            ctx.fillRect(x + shift + step * 4, cy - 22 - step * 3, 6, 3);
-            ctx.fillRect(x - shift + 24 + step * 4, cy + 16 - step * 3, 6, 3);
-        }
-    }
-}
-
-function drawDynamicPondLife(ctx, time, isNight) {
+function drawPondKoi(ctx, time, night) {
     ctx.save();
     ctx.translate(POND.x, POND.y);
-
-    ctx.fillStyle = isNight ? 'rgba(129, 212, 250, 0.25)' : 'rgba(215, 238, 255, 0.55)';
-    const pShift = Math.floor((time * 0.008) % 12);
-    ctx.fillRect(-60 + pShift, 35, 8, 3);
-    ctx.fillRect(40 - pShift, 65, 8, 3);
-    ctx.fillRect(-20 + pShift, 105, 8, 3);
-
-    KOI_FISH.forEach((f, idx) => {
-        const t = time * f.speed + f.angle;
-        const fx = Math.round(Math.cos(t) * (f.radius * 0.85));
-        const fy = Math.round(24 + Math.abs(Math.sin(t * 0.65)) * (f.radius * 0.62));
-        const dir = -Math.sin(t) >= 0 ? 1 : -1;
-
+    KOI_LIST.forEach((f, i) => {
+        const t = time * f.spd + f.ang;
+        const fx = Math.round(Math.cos(t) * (f.rad * 0.85));
+        const fy = Math.round(22 + Math.abs(Math.sin(t * 0.65)) * (f.rad * 0.62));
+        const dir = (-Math.sin(t) >= 0) ? 1 : -1;
         ctx.save();
         ctx.translate(fx, fy);
         ctx.scale(dir, 1);
-
-        ctx.fillStyle = '#0c0e0c';
-        ctx.fillRect(-7, -3, 14, 6);
-        ctx.fillStyle = f.color;
-        ctx.fillRect(-6, -2, 12, 4);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-1, -2, 3, 2);
-
-        const tailWag = Math.round(Math.sin(time * 0.006 + idx) * 2);
-        ctx.fillStyle = f.color;
-        ctx.fillRect(-10, -3 + tailWag, 4, 6);
+        ctx.fillStyle = '#0c0e0c'; ctx.fillRect(-7, -3, 14, 6);
+        ctx.fillStyle = f.col; ctx.fillRect(-6, -2, 12, 4);
+        const wag = Math.round(Math.sin(time * 0.005 + i) * 2);
+        ctx.fillRect(-10, -3 + wag, 4, 6);
         ctx.restore();
     });
     ctx.restore();
 
-    LOTUS_FLOWERS.forEach(lf => {
-        const sway = Math.round(Math.sin(time * 0.0015 + lf.phase) * 3);
-        ctx.fillStyle = isNight ? '#1b4d20' : '#2e7d32';
-        ctx.fillRect(lf.x - 10, lf.y - 4, 20, 8);
-
-        ctx.fillStyle = lf.isPink ? '#f48fb1' : '#ffffff';
-        ctx.fillRect(lf.x - 5 + sway, lf.y - 12, 10, 6);
-        ctx.fillStyle = '#fdd835';
-        ctx.fillRect(lf.x - 2 + sway, lf.y - 11, 4, 3);
-    });
-}
-
-function drawOctagonHermitage(ctx, h, isNight) {
-    ctx.save();
-    ctx.translate(h.x, h.y);
-    ctx.fillStyle = isNight ? '#3b332b' : '#b89f82';
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-        const a = (i * Math.PI) / 4 + Math.PI / 8;
-        const px = Math.cos(a) * h.r, py = Math.sin(a) * h.r;
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-
-    ctx.fillStyle = '#5d4037';
-    ctx.fillRect(-12, -4, 24, 14);
-    ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 2; ctx.strokeRect(-12, -4, 24, 14);
-
-    ctx.fillStyle = isNight ? '#cfd8dc' : '#fff';
-    ctx.font = 'bold 10px "Courier New", monospace'; ctx.textAlign = 'center';
-    ctx.fillText(h.name, 0, -h.r - 6);
-    ctx.restore();
-}
-
-function drawIndoThaiOpenTempleStatic(ctx, isNight) {
-    ctx.fillStyle = isNight ? '#4a3d31' : '#d7bfa0';
-    ctx.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
-    ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
-
-    [TEMPLE.x + 55, TEMPLE.x + TEMPLE.w - 55].forEach(tx => {
-        const ty = TEMPLE.y + 55;
-        ctx.fillStyle = isNight ? '#795548' : '#e0a96d';
-        ctx.fillRect(tx - 24, ty - 20, 48, 40);
-        ctx.fillStyle = '#d4af37';
-        ctx.fillRect(tx - 14, ty - 32, 28, 16);
-        ctx.fillRect(tx - 4, ty - 48, 8, 16);
-    });
-
-    const cx = TEMPLE.x + TEMPLE.w / 2;
-    const cy = TEMPLE.y + 95;
-    ctx.fillStyle = '#8e2424'; ctx.strokeStyle = '#f4d03f'; ctx.lineWidth = 3;
-    ctx.fillRect(cx - 115, cy - 55, 230, 68);
-    ctx.strokeRect(cx - 115, cy - 55, 230, 68);
-
-    ctx.fillStyle = '#5d4037';
-    for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < 5; col++) {
-            const bx = TEMPLE.x + 110 + col * 85;
-            const by = TEMPLE.y + 225 + row * 72;
-            ctx.fillRect(bx - 16, by - 10, 32, 20);
-            ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 1.5; ctx.strokeRect(bx - 16, by - 10, 32, 20);
-        }
+    if (night) {
+        const cx = TEMPLE.x + TEMPLE.w / 2;
+        const cy = TEMPLE.y + 90;
+        const g = ctx.createRadialGradient(cx, cy, 12, cx, cy, 120);
+        g.addColorStop(0, 'rgba(255, 245, 157, 0.7)');
+        g.addColorStop(1, 'rgba(255, 193, 7, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(cx, cy, 120, 0, Math.PI * 2); ctx.fill();
     }
 }
 
-function drawGiantBuddhaAura(ctx, bx, by, time, isNight) {
-    ctx.save();
-    ctx.translate(bx, by);
-    const glowRadius = isNight ? 130 + Math.sin(time * 0.003) * 8 : 76 + Math.sin(time * 0.0025) * 4;
-    const grad = ctx.createRadialGradient(0, -35, 15, 0, -35, glowRadius);
-    grad.addColorStop(0, isNight ? 'rgba(255, 249, 196, 1)' : 'rgba(255, 238, 88, 0.85)');
-    grad.addColorStop(0.5, isNight ? 'rgba(255, 213, 79, 0.65)' : 'rgba(255, 193, 7, 0.4)');
-    grad.addColorStop(1, 'rgba(255, 193, 7, 0)');
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, -35, glowRadius, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = '#5e1414'; ctx.strokeStyle = '#111'; ctx.lineWidth = 3;
-    ctx.fillRect(-84, 20, 168, 26); ctx.strokeRect(-84, 20, 168, 26);
-
-    ctx.fillStyle = '#ec407a';
-    ctx.fillRect(-56, 8, 112, 12);
-
-    ctx.fillStyle = '#f39c12'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2.5;
-    ctx.fillRect(-46, -8, 92, 18); ctx.strokeRect(-46, -8, 92, 18);
-    ctx.fillRect(-28, -46, 56, 38); ctx.strokeRect(-28, -46, 56, 38);
-
-    ctx.fillStyle = '#ffd54f';
-    ctx.fillRect(-12, -14, 24, 8);
-
-    ctx.fillRect(-18, -78, 36, 32); ctx.strokeRect(-18, -78, 36, 32);
-    ctx.fillStyle = '#1c2833';
-    ctx.fillRect(-18, -84, 36, 8);
-    ctx.fillRect(-8, -92, 16, 8);
-
-    ctx.fillStyle = '#4e342e';
-    ctx.fillRect(-10, -64, 6, 3);
-    ctx.fillRect(4, -64, 6, 3);
-    ctx.fillRect(-4, -54, 8, 3);
-    ctx.restore();
-}
-
-function drawMuMonGate(ctx, gx, gy, isNight) {
-    ctx.save();
-    ctx.translate(gx, gy);
-    ctx.fillStyle = isNight ? '#3b1c14' : '#6e2c1b';
-    ctx.strokeStyle = '#111'; ctx.lineWidth = 3;
-    ctx.fillRect(-82, -78, 18, 92); ctx.strokeRect(-82, -78, 18, 92);
-    ctx.fillRect(64, -78, 18, 92); ctx.strokeRect(64, -78, 18, 92);
-
-    ctx.fillStyle = '#263238';
-    ctx.fillRect(-106, -94, 212, 18); ctx.strokeRect(-106, -94, 212, 18);
-    ctx.fillRect(-92, -104, 184, 10);
-
-    ctx.fillStyle = '#5e1414'; ctx.fillRect(-44, -84, 88, 22); ctx.strokeRect(-44, -84, 88, 22);
-    ctx.fillStyle = '#f4d03f'; ctx.font = 'bold 13px "Courier New", monospace'; ctx.textAlign = 'center';
-    ctx.fillText('VÔ NGÔN', 0, -68);
-    ctx.restore();
-}
-
-function drawStoneLanternGlow(ctx, lx, ly, time) {
-    const flicker = 0.8 + Math.sin(time * 0.015 + lx) * 0.2;
-    const grad = ctx.createRadialGradient(lx, ly - 16, 2, lx, ly - 16, 44);
-    grad.addColorStop(0, `rgba(255, 238, 88, ${flicker})`);
-    grad.addColorStop(1, 'rgba(255, 193, 7, 0)');
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(lx, ly - 16, 44, 0, Math.PI * 2); ctx.fill();
-}
-
-function drawTreeFruitsOnly(ctx, t, idx, time) {
-    ctx.save();
-    ctx.translate(t.x, t.y);
-    const pulse = Math.round(Math.sin(time * 0.008) * 1.5);
-    ctx.fillStyle = '#0c0e0c';
-    ctx.fillRect(-20, -34 + pulse, 10, 10);
-    ctx.fillRect(10, -38 - pulse, 10, 10);
-    ctx.fillStyle = (idx % 2 === 0) ? '#ff3d00' : '#ff80ab';
-    ctx.fillRect(-19, -33 + pulse, 8, 8);
-    ctx.fillRect(11, -37 - pulse, 8, 8);
-    ctx.restore();
-}
-
-// ============================================================================
-// SPRITE CACHING (TÊN NƠI ĐÃ ĐƯỢC ĐẨY LÊN CAO -6 KHÔNG DÍNH ĐẦU VÌ NHÂN VẬT TO LÊN 25%)
-// ============================================================================
 const spriteCache = new Map();
-const MAX_CACHE_ENTRIES = 1200;
+const MAX_CACHE = 1200;
 
-function computeAppearanceHash(name, cfg) {
-    return `${name}|${cfg.gender}|${cfg.skin}|${cfg.hairStyle}|${cfg.outfitId}|${cfg.customShirt || ''}|${cfg.customPants || ''}|${cfg.customHat || ''}|${cfg.customShoes || ''}`;
+function getCharKey(name, c) {
+    return `${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.hairColor || ''}|${c.outfitId}`;
 }
 
-function getCachedCharacterFrames(name, cfg) {
-    const key = computeAppearanceHash(name, cfg);
+function getCharacterFrames(name, c) {
+    const key = getCharKey(name, c);
     if (spriteCache.has(key)) return spriteCache.get(key);
-
-    if (spriteCache.size >= MAX_CACHE_ENTRIES) {
-        const firstKey = spriteCache.keys().next().value;
-        spriteCache.delete(firstKey);
+    if (spriteCache.size >= MAX_CACHE) {
+        spriteCache.delete(spriteCache.keys().next().value);
     }
 
-    const frames = [0, 1, 2, 3].map(poseState => {
-        const spr = buildRotmgCharacterSprite(cfg, poseState);
-        const c = document.createElement('canvas');
-        c.width = 180;
-        c.height = 110;
-        const cCtx = c.getContext('2d');
-        cCtx.imageSmoothingEnabled = false;
+    const frames = [0, 1, 2, 3].map(pose => {
+        const spr = buildCharacterSprite(c, pose);
+        const cv = document.createElement('canvas');
+        cv.width = 180;
+        cv.height = 120;
+        const cx = cv.getContext('2d');
+        cx.imageSmoothingEnabled = false;
 
-        cCtx.fillStyle = 'rgba(0, 0, 0, 0.42)';
-        cCtx.beginPath();
-        cCtx.ellipse(90, 88, poseState === 3 ? 24 : 16, 7, 0, 0, Math.PI * 2);
-        cCtx.fill();
+        cx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+        cx.beginPath();
+        cx.ellipse(90, 94, pose === 3 ? 25 : 18, 6, 0, 0, Math.PI * 2);
+        cx.fill();
 
-        const bobY = (poseState === 1 || poseState === 2) ? -2 : 0;
-        cCtx.drawImage(spr, Math.round(90 - spr.width / 2), Math.round(90 - spr.height + bobY));
+        const bob = (pose === 1 || pose === 2) ? -2 : 0;
+        const topY = Math.round(94 - spr.height + bob);
+        cx.drawImage(spr, Math.round(90 - spr.width / 2), topY);
 
         if (name) {
-            // Đẩy tên lên cao hơn (-6) để không bị dính vào đầu khi nhân vật to lên 25%
-            const nameY = (poseState === 3) ? 14 : -6;
-            cCtx.font = 'bold 12px "Courier New", monospace';
-            cCtx.textAlign = 'center';
-            cCtx.strokeStyle = '#0c0e0c';
-            cCtx.lineWidth = 3;
-            cCtx.strokeText(name, 90, nameY);
-            cCtx.fillStyle = '#ffeb3b';
-            cCtx.fillText(name, 90, nameY);
+            const nameY = Math.max(14, topY - 8);
+            cx.font = 'bold 11px "Courier New", monospace';
+            cx.textAlign = 'center';
+            cx.strokeStyle = '#0c0e0c';
+            cx.lineWidth = 3;
+            cx.strokeText(name, 90, nameY);
+            cx.fillStyle = '#ffeb3b';
+            cx.fillText(name, 90, nameY);
         }
-        return c;
+        return cv;
     });
 
     spriteCache.set(key, frames);
     return frames;
 }
 
-function drawCachedCharacter(ctx, x, y, name, cfg, meditating, walkPhase, chat, time, petType, holdingItem) {
+function drawEntity(ctx, x, y, name, c, med, walk, chat, time) {
     const rx = Math.round(x);
     const ry = Math.round(y);
 
-    if (petType) {
-        const petSpr = ROTMG_SPRITES['pet_' + petType];
-        if (petSpr) {
-            const py = ry + 6 + Math.round(Math.sin(time * 0.006) * 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.35)';
-            ctx.beginPath(); ctx.ellipse(rx - 32, ry + 10, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.drawImage(petSpr, rx - 32 - Math.round(petSpr.width / 2), py - petSpr.height);
-        }
-    }
-
-    if (meditating) {
-        const pulse = 0.5 + Math.sin(time * 0.004) * 0.2;
-        const radius = 35 + Math.sin(time * 0.003) * 3;
-        const grad = ctx.createRadialGradient(rx, ry - 6, 4, rx, ry - 6, radius);
+    if (med) {
+        const pulse = 0.45 + Math.sin(time * 0.004) * 0.2;
+        const rad = 36 + Math.sin(time * 0.003) * 3;
+        const grad = ctx.createRadialGradient(rx, ry - 12, 4, rx, ry - 12, rad);
         grad.addColorStop(0, `rgba(255, 245, 157, ${pulse})`);
         grad.addColorStop(1, 'rgba(255, 245, 157, 0)');
         ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(rx, ry - 6, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rx, ry - 12, rad, 0, Math.PI * 2); ctx.fill();
     }
 
-    const frames = getCachedCharacterFrames(name, cfg);
-    let frameIdx = 0;
-    if (meditating) {
-        frameIdx = 3;
-    } else if (walkPhase > 0.01) {
-        frameIdx = (Math.sin(walkPhase) >= 0) ? 1 : 2;
-    }
+    const frames = getCharacterFrames(name, c);
+    let idx = 0;
+    if (med) idx = 3;
+    else if (walk > 0.01) idx = (Math.sin(walk) >= 0) ? 1 : 2;
 
-    ctx.drawImage(frames[frameIdx], rx - 90, ry - 88);
-
-    if (holdingItem && !meditating) {
-        ctx.fillStyle = '#0c0e0c';
-        ctx.fillRect(rx + 16, ry - 22, 10, 10);
-        ctx.fillStyle = holdingItem === 'fruit' ? '#ff3d00' : '#ff80ab';
-        ctx.fillRect(rx + 17, ry - 21, 8, 8);
-    }
+    ctx.drawImage(frames[idx], rx - 90, ry - 94);
 
     if (chat) {
-        const nameY = meditating ? -52 : -56;
-        ctx.font = '12px "Courier New", monospace';
+        ctx.font = '11px "Courier New", monospace';
         ctx.textAlign = 'center';
-        const textWidth = ctx.measureText(chat).width;
-        const boxW = Math.max(textWidth + 16, 40);
-        const boxY = ry + nameY - 32;
+        const w = Math.max(ctx.measureText(chat).width + 14, 36);
+        const by = ry - 118;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
         ctx.strokeStyle = '#0c0e0c'; ctx.lineWidth = 2;
-        ctx.fillRect(Math.round(rx - boxW / 2), boxY, Math.round(boxW), 22);
-        ctx.strokeRect(Math.round(rx - boxW / 2), boxY, Math.round(boxW), 22);
-        ctx.fillStyle = '#111'; ctx.fillText(chat, rx, boxY + 15);
+        ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 20);
+        ctx.strokeRect(Math.round(rx - w / 2), by, Math.round(w), 20);
+        ctx.fillStyle = '#111';
+        ctx.fillText(chat, rx, by + 14);
     }
 }
 
-// 7. LINH THÚ & PHỤ KIỆN 7 MÀU
-let worldDrops = [];
-const DROP_COLORS_7 = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff', '#f50057'];
-
-function spawnRandomDrop() {
-    if (worldDrops.length >= 4) return;
-    const rx = 250 + Math.random() * (MAP_WIDTH - 500);
-    const ry = 350 + Math.random() * (MAP_HEIGHT - 500);
-    const roll = Math.random() * 100;
-
-    if (roll < 1) {
-        worldDrops.push({ id: Date.now() + Math.random(), x: rx, y: ry, category: 'pet', subType: 'elephant', label: 'Voi Trắng Đeo Hoa' });
-    } else if (roll < 2) {
-        worldDrops.push({ id: Date.now() + Math.random(), x: rx, y: ry, category: 'pet', subType: 'bird', label: 'Linh Điểu' });
-    } else if (roll < 3) {
-        worldDrops.push({ id: Date.now() + Math.random(), x: rx, y: ry, category: 'pet', subType: 'phoenix', label: 'Khổng Tước Đỏ' });
-    } else {
-        const gearTypes = ['shirt', 'pants', 'hat', 'shoes'];
-        const gearNames = { shirt: 'Áo', pants: 'Quần', hat: 'Mũ', shoes: 'Giày Dép' };
-        const g = gearTypes[Math.floor(Math.random() * gearTypes.length)];
-        const col = DROP_COLORS_7[Math.floor(Math.random() * DROP_COLORS_7.length)];
-        worldDrops.push({ id: Date.now() + Math.random(), x: rx, y: ry, category: 'gear', subType: g, color: col, label: gearNames[g] });
-    }
-}
-spawnRandomDrop(); spawnRandomDrop();
-setInterval(spawnRandomDrop, 45000);
-
-function drawWorldDrops(ctx, time, camLeft, camTop, camRight, camBottom) {
-    for (let i = 0; i < worldDrops.length; i++) {
-        const d = worldDrops[i];
-        if (d.x < camLeft - 40 || d.x > camRight + 40 || d.y < camTop - 40 || d.y > camBottom + 40) continue;
-
-        const dx = Math.round(d.x);
-        const dy = Math.round(d.y);
-        const glowColor = (d.subType === 'phoenix') ? 'rgba(255, 23, 68, 0.7)' : (d.color || 'rgba(255, 241, 118, 0.7)');
-        const rad = 20 + Math.sin(time * 0.007) * 3;
-        const grad = ctx.createRadialGradient(dx, dy - 6, 2, dx, dy - 6, rad);
-        grad.addColorStop(0, glowColor); grad.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(dx, dy - 6, rad, 0, Math.PI * 2); ctx.fill();
-
-        if (d.category === 'pet') {
-            const petSpr = ROTMG_SPRITES['pet_' + d.subType];
-            if (petSpr) ctx.drawImage(petSpr, dx - Math.round(petSpr.width / 2), dy - petSpr.height + 4);
-        } else {
-            ctx.fillStyle = '#0c0e0c';
-            ctx.fillRect(dx - 10, dy - 14, 20, 16);
-            ctx.fillStyle = d.color;
-            ctx.fillRect(dx - 8, dy - 12, 16, 12);
-            ctx.fillStyle = '#ffea00';
-            ctx.fillRect(dx - 3, dy - 15, 6, 4);
-        }
-    }
-}
-
-// 8. 5 CHƯ TĂNG KHẤT THỰC (PIXEL ROTMG TO HƠN)
-const MONK_SPRITES = [
-    bakeRotmgSprite([
-        '...SSS...',
-        '..SSSSS..',
-        '..SE.ES..',
-        '..SSSSS..',
-        '.OOOOOOO.',
-        'SOOObOOOS',
-        '.OOOOOOO.',
-        '..OO.OO..',
-        '..FF..F..'
-    ], { S: '#f1c27d', E: '#0c0e0c', O: '#f39c12', b: '#212121', F: '#5d4037' }, 5, true),
-    bakeRotmgSprite([
-        '...SSS...',
-        '..SSSSS..',
-        '..SE.ES..',
-        '..SSSSS..',
-        '.OOOOOOO.',
-        'SOOObOOOS',
-        '.OOOOOOO.',
-        '..OO.OO..',
-        '...F..FF.'
-    ], { S: '#f1c27d', E: '#0c0e0c', O: '#f39c12', b: '#212121', F: '#5d4037' }, 5, true)
-];
-
-let monks = [];
-for (let i = 0; i < 5; i++) { monks.push({ id: i, x: 1100, y: 540 + i * 32, active: false }); }
-
-let questState = {
-    meditateSeconds: 0,
-    almsDone: false,
-    karma: 0,
-    meditateCounterTimer: 0
-};
-
-function addKarma(amount) {
-    questState.karma += amount;
-    document.getElementById('karma-score').innerText = `✨ Điểm Công Đức (Karma): ${questState.karma}`;
-    showFloatingNotice(`✨ +${amount} Điểm Công Đức!`);
-}
-
-function updateAlmsMonks(vnDate) {
-    const h = vnDate.getHours(), m = vnDate.getMinutes(), s = vnDate.getSeconds();
-    const isAlms = (h === 10 && m < 30);
-    if (!isAlms) {
-        monks.forEach(mk => mk.active = false);
-        if (myHoldingItem) { myHoldingItem = null; updateInventoryHUD(); }
-        return false;
-    }
-    const elapsedSec = m * 60 + s;
-    const progress = elapsedSec / 1800;
-    const startY = 580, endY = 1620;
-
-    monks.forEach((mk, idx) => {
-        mk.active = true;
-        const offsetP = Math.max(0, Math.min(1, progress - idx * 0.012));
-        let curY;
-        if (offsetP <= 0.5) { curY = startY + (endY - startY) * (offsetP * 2); }
-        else { curY = endY - (endY - startY) * ((offsetP - 0.5) * 2); }
-        const waveX = (curY > 1180 && curY < 1380) ? 0 : Math.sin((curY - 640) * 0.008) * 32;
-        mk.x = 1100 + waveX; mk.y = curY;
-    });
-    return true;
-}
-
-function drawAlmsMonk(ctx, mk, time) {
-    if (!mk.active) return;
-    const mx = Math.round(mk.x);
-    const my = Math.round(mk.y);
-    const step = Math.sin(time * 0.006 + mk.id) >= 0 ? 0 : 1;
-    const spr = MONK_SPRITES[step];
-
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.ellipse(mx, my + 2, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.drawImage(spr, mx - Math.round(spr.width / 2), my - spr.height + 2);
-
-    ctx.font = 'bold 10px "Courier New", monospace'; ctx.textAlign = 'center';
-    ctx.strokeStyle = '#0c0e0c'; ctx.lineWidth = 3;
-    ctx.strokeText('Chư Tăng', mx, my - spr.height - 4);
-    ctx.fillStyle = '#fff59d';
-    ctx.fillText('Chư Tăng', mx, my - spr.height - 4);
-}
-
-// ============================================================================
-// MẠNG P2P & GAME LOOP
-// ============================================================================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+function syncCanvasResolution() {
+    const rect = document.getElementById('game-frame').getBoundingClientRect();
+    const w = Math.max(360, Math.round(rect.width));
+    const h = Math.max(640, Math.round(rect.height));
+    if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+    }
     ctx.imageSmoothingEnabled = false;
 }
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+window.addEventListener('resize', syncCanvasResolution);
+syncCanvasResolution();
 
-let myName = 'Hành Giả', myX = 1100, myY = 920, targetX = 1100, targetY = 920;
-let isMeditating = false, walkPhase = 0, chatMessage = '', chatTimer = 0;
-let myPet = null, myHoldingItem = null, targetEntity = null;
-
-let keys = {}, peer = null;
-let connections = {};
-let remotePlayers = {};
-let playerProfiles = {};
-let lastSentPacket = '';
-
-const GLOBAL_ROOM_ID = 'thien_vien_online_v6pro_2026';
-const MAX_DIRECT_PEERS = 24;
-const MAX_VISIBLE_CROWD = 280;
+let myName = 'Hành Giả';
+let myX = 1000, myY = 900, targetX = 1000, targetY = 900;
+let isMeditating = false, walkPhase = 0;
+let chatMsg = '', chatTicks = 0;
+const keys = {};
 
 window.addEventListener('keydown', e => {
-    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-    keys[e.key.toLowerCase()] = true;
-    if (e.code === 'Space') { e.preventDefault(); toggleMeditate(); }
-    else if (e.key === 'Enter') { document.getElementById('chat-input').focus(); }
-    else if (e.key.toLowerCase() === 'm') { toggleBackgroundMusic(); }
-    else { targetX = myX; targetY = myY; targetEntity = null; }
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (e.code === 'Space') {
+        e.preventDefault();
+        toggleMeditate();
+    } else if (k === 'm') {
+        toggleMusic();
+    } else if (e.key === 'Enter') {
+        document.getElementById('chat-input').focus();
+    } else if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) {
+        targetX = myX; targetY = myY;
+    }
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-function handlePointerInput(clientX, clientY) {
+function setMoveTarget(clientX, clientY) {
     if (isMeditating) return;
-    const camX = canvas.width / 2 - myX, camY = canvas.height / 2 - myY;
-    const worldX = clientX - camX, worldY = clientY - camY;
-
-    targetX = worldX; targetY = worldY; targetEntity = null;
-
-    // Kiểm tra bấm vào Cây Bồ Đề Nguyện Ước
-    if (Math.hypot(worldX - WISH_TREE.x, worldY - WISH_TREE.y) < WISH_TREE.radius + 15) {
-        targetEntity = { type: 'wish_tree' };
-        targetX = WISH_TREE.x; targetY = WISH_TREE.y + 35; return;
-    }
-
-    for (let d of worldDrops) {
-        if (Math.hypot(worldX - d.x, worldY - d.y) < 35) {
-            targetEntity = { type: 'drop', ref: d };
-            targetX = d.x; targetY = d.y; return;
-        }
-    }
-
-    for (let mk of monks) {
-        if (mk.active && Math.hypot(worldX - mk.x, worldY - mk.y) < 35) {
-            targetEntity = { type: 'monk', ref: mk };
-            targetX = mk.x; targetY = mk.y; return;
-        }
-    }
-
-    const vnNow = getVietnamTime();
-    if (vnNow.getHours() === 10 && vnNow.getMinutes() < 30) {
-        for (let i = 0; i < TREES.length; i++) {
-            const t = TREES[i];
-            if (t.hasFruit && Math.hypot(worldX - t.x, worldY - (t.y - 30)) < 65) {
-                targetEntity = { type: 'tree', idx: i, ref: t };
-                targetX = t.x; targetY = t.y + 18; return;
-            }
-        }
-    }
+    const rect = canvas.getBoundingClientRect();
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    const camX = canvas.width / 2 - myX;
+    const camY = canvas.height / 2 - myY;
+    targetX = sx - camX;
+    targetY = sy - camY;
 }
 
-window.addEventListener('click', e => { if (e.target === canvas) handlePointerInput(e.clientX, e.clientY); });
-window.addEventListener('touchstart', e => {
-    if (e.touches.length > 0 && e.target === canvas) handlePointerInput(e.touches[0].clientX, e.touches[0].clientY);
-}, { passive: true });
-
-function updateInventoryHUD() {
-    const petNames = { elephant: 'Voi Trắng Đeo Hoa', bird: 'Linh Điểu', phoenix: 'Khổng Tước Đỏ' };
-    document.getElementById('pet-status').innerText = '🐾 Linh thú: ' + (myPet ? petNames[myPet] : 'Chưa có');
-    document.getElementById('holding-status').innerText = '🍎 Đang cầm: ' + (myHoldingItem === 'fruit' ? 'Trái cây' : (myHoldingItem === 'flower' ? 'Hoa tươi' : 'Không'));
-}
-
-function showFloatingNotice(text) { chatMessage = text; chatTimer = 240; }
-
-function checkInteractionArrival() {
-    if (!targetEntity) return;
-    const dist = Math.hypot(myX - targetX, myY - targetY);
-    if (dist > 32) return;
-
-    if (targetEntity.type === 'wish_tree') {
-        openWishModal();
-    } else if (targetEntity.type === 'drop') {
-        const idx = worldDrops.findIndex(item => item.id === targetEntity.ref.id);
-        if (idx !== -1) {
-            const picked = worldDrops[idx];
-            if (picked.category === 'pet') {
-                if (myPet) { showFloatingNotice('Đã có linh thú đi theo rồi!'); }
-                else {
-                    myPet = picked.subType; worldDrops.splice(idx, 1);
-                    updateInventoryHUD(); showFloatingNotice('Đã thu phục ' + picked.label + '!');
-                    addKarma(15);
-                }
-            } else if (picked.category === 'gear') {
-                if (picked.subType === 'shirt') avatarConfig.customShirt = picked.color;
-                if (picked.subType === 'pants') avatarConfig.customPants = picked.color;
-                if (picked.subType === 'hat') avatarConfig.customHat = picked.color;
-                if (picked.subType === 'shoes') avatarConfig.customShoes = picked.color;
-                worldDrops.splice(idx, 1);
-                broadcastMyProfile();
-                showFloatingNotice('Đã mặc ' + picked.label + ' mới!');
-                addKarma(10);
-            }
-        }
-    } else if (targetEntity.type === 'tree') {
-        myHoldingItem = (targetEntity.idx % 2 === 0) ? 'fruit' : 'flower';
-        updateInventoryHUD(); showFloatingNotice(myHoldingItem === 'fruit' ? 'Đã hái trái cây!' : 'Đã hái hoa tươi!');
-    } else if (targetEntity.type === 'monk') {
-        if (myHoldingItem && targetEntity.ref.active) {
-            myHoldingItem = null; updateInventoryHUD(); 
-            showFloatingNotice('🙏 Đã cúng dường Chư Tăng thành công!');
-            questState.almsDone = true;
-            document.getElementById('quest-alms').innerText = '🙏 Cúng dường Chư Tăng: [✓ Hoàn thành]';
-            document.getElementById('quest-alms').style.color = '#81c784';
-            addKarma(30);
-        }
-    }
-    targetEntity = null;
-}
-
-function openWishModal() {
-    document.getElementById('wish-modal').style.display = 'flex';
-}
-function closeWishModal() {
-    document.getElementById('wish-modal').style.display = 'none';
-}
-function submitWish() {
-    const text = document.getElementById('wish-textarea').value.trim();
-    if (text) {
-        communityWishes.unshift({ text: text, author: myName });
-        if (communityWishes.length > 10) communityWishes.pop();
-        closeWishModal();
-        showFloatingNotice('🌿 Đã treo lời nguyện ước lên Cây Bồ Đề!');
-        addKarma(20);
-        document.getElementById('wish-textarea').value = '';
-    }
-}
-
-function canMoveTo(nx, ny) {
-    if (nx < 35 || nx > MAP_WIDTH - 35 || ny < 245 || ny > MAP_HEIGHT - 35) return false;
-    const ry = getRiverCenterY(nx);
-    if (Math.abs(ny - ry) < RIVER_HALF_H - 4) {
-        if (Math.abs(nx - BRIDGE_X) > 48) return false;
-    }
-    if (ny >= POND.y - 6 && Math.hypot(nx - POND.x, ny - POND.y) < POND.r + 10) return false;
-    const cx = TEMPLE.x + TEMPLE.w / 2;
-    if (Math.abs(nx - cx) < 92 && ny > TEMPLE.y + 40 && ny < TEMPLE.y + 150) return false;
-    return true;
-}
+canvas.addEventListener('pointerdown', e => {
+    setMoveTarget(e.clientX, e.clientY);
+});
 
 function toggleMeditate() {
     isMeditating = !isMeditating;
-    const btn = document.getElementById('meditate-btn');
-    if (isMeditating) {
-        btn.innerText = '🚶 Đứng Dậy'; btn.classList.add('meditating');
-        targetX = myX; targetY = myY; targetEntity = null;
-    } else {
-        btn.innerText = '🧘 Ngồi Thiền'; btn.classList.remove('meditating');
-    }
+    const btn = document.getElementById('btn-meditate');
+    btn.classList.toggle('active', isMeditating);
+    if (isMeditating) { targetX = myX; targetY = myY; }
 }
 
-function handleChatKey(e) {
-    if (e.key === 'Enter') {
-        const input = document.getElementById('chat-input'), text = input.value.trim();
-        if (text) { chatMessage = text; chatTimer = 360; }
-        input.value = ''; input.blur();
-    }
+function sendChatFromInput() {
+    const inp = document.getElementById('chat-input');
+    const t = inp.value.trim();
+    if (t) { chatMsg = t; chatTicks = 360; }
+    inp.value = '';
+    inp.blur();
+}
+function onChatKey(e) {
+    if (e.key === 'Enter') sendChatFromInput();
 }
 
-function initMultiplayer() {
-    peer = new Peer(GLOBAL_ROOM_ID, {
+function canMove(nx, ny) {
+    if (nx < 35 || nx > MAP_W - 35 || ny < 245 || ny > MAP_H - 35) return false;
+    if (Math.abs(ny - getRiverY(nx)) < RIVER_HALF - 4 && Math.abs(nx - BRIDGE_X) > 44) return false;
+    if (ny >= POND.y - 4 && Math.hypot(nx - POND.x, ny - POND.y) < POND.r + 8) return false;
+    const cx = TEMPLE.x + TEMPLE.w / 2;
+    if (Math.abs(nx - cx) < 50 && ny > TEMPLE.y + 40 && ny < TEMPLE.y + 140) return false;
+    return true;
+}
+
+const ROOM_ID = 'thienvien_v62_room_2026';
+const MAX_PEERS = 24;
+const MAX_VISIBLE = 280;
+let peer = null;
+const conns = {};
+const remotes = {};
+const profiles = {};
+let syncTimer = null;
+let lastSig = '';
+let tickCount = 0;
+
+function createPeerInstance(customId = null) {
+    const iceCfg = {
         config: {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' }
             ]
         }
+    };
+    const p = customId ? new Peer(customId, iceCfg) : new Peer(iceCfg);
+    p.on('open', () => {
+        updateOnlineHUD();
+        if (p.id !== ROOM_ID) linkPeer(ROOM_ID);
+        beginSync();
     });
-    peer.on('open', () => {
-        updateOnlineUI();
-        startSyncLoop();
+    p.on('disconnected', () => {
+        try { if (!p.destroyed) p.reconnect(); } catch (_) {}
     });
-    peer.on('error', err => {
-        if (err.type === 'unavailable-id') {
-            peer = new Peer({
-                config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-            });
-            peer.on('open', () => {
-                connectToPeer(GLOBAL_ROOM_ID);
-                startSyncLoop();
-            });
-            peer.on('connection', c => handleIncomingConnection(c));
+    p.on('error', err => {
+        if (err && err.type === 'unavailable-id' && customId) {
+            try { p.destroy(); } catch (_) {}
+            peer = createPeerInstance(null);
         } else {
-            updateOnlineUI();
-            startSyncLoop();
+            updateOnlineHUD();
+            beginSync();
         }
     });
-    peer.on('connection', c => handleIncomingConnection(c));
+    p.on('connection', bindConn);
+    return p;
 }
 
-function handleIncomingConnection(conn) {
-    const activeCount = Object.keys(connections).length;
-    if (activeCount >= MAX_DIRECT_PEERS) {
-        conn.on('open', () => {
-            const relayCandidates = Object.keys(connections).slice(0, 6);
-            conn.send({ t: 'R', list: relayCandidates });
-            setTimeout(() => { try { conn.close(); } catch (e) {} }, 400);
-        });
-        return;
-    }
-    setupConnEvents(conn);
+function initP2P() {
+    if (typeof Peer === 'undefined') { updateOnlineHUD(); return; }
+    peer = createPeerInstance(ROOM_ID);
 }
 
-function connectToPeer(targetId) {
-    if (!targetId || connections[targetId] || (peer && targetId === peer.id)) return;
-    if (Object.keys(connections).length >= MAX_DIRECT_PEERS) return;
-    try {
-        setupConnEvents(peer.connect(targetId, { reliable: false }));
-    } catch (e) {}
+function linkPeer(id) {
+    if (!id || !peer || peer.destroyed || conns[id] || id === peer.id) return;
+    if (Object.keys(conns).length >= MAX_PEERS) return;
+    try { bindConn(peer.connect(id, { reliable: false })); } catch (_) {}
 }
 
-function broadcastMyProfile(targetConn = null) {
+function sendProfile(targetConn = null) {
     if (!peer || !peer.id) return;
-    const pkt = { t: 'P', id: peer.id, n: myName, c: avatarConfig };
-    if (targetConn && targetConn.open) {
-        targetConn.send(pkt);
-    } else {
-        for (let id in connections) {
-            if (connections[id].open) connections[id].send(pkt);
-        }
+    const pkt = { t: 'P', id: peer.id, n: myName, c: cfg };
+    if (targetConn && targetConn.open) targetConn.send(pkt);
+    else {
+        for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
     }
 }
 
-function setupConnEvents(conn) {
-    connections[conn.peer] = conn;
+function bindConn(conn) {
+    conns[conn.peer] = conn;
     conn.on('open', () => {
-        updateOnlineUI();
-        broadcastMyProfile(conn);
-        const knownIds = Object.keys(connections).filter(id => id !== conn.peer);
-        if (knownIds.length > 0) {
-            conn.send({ t: 'L', list: knownIds.slice(0, 12) });
-        }
+        updateOnlineHUD();
+        sendProfile(conn);
+        const peers = Object.keys(conns).filter(id => id !== conn.peer);
+        if (peers.length > 0) conn.send({ t: 'L', list: peers.slice(0, 12) });
     });
-
-    conn.on('data', data => {
-        if (!data || !data.t) return;
-
-        if (data.t === 'R' || data.t === 'L') {
-            if (Array.isArray(data.list)) {
-                data.list.forEach(id => {
-                    if (Object.keys(connections).length < MAX_DIRECT_PEERS) connectToPeer(id);
-                });
+    conn.on('data', d => {
+        if (!d || !d.t) return;
+        if (d.t === 'L' && Array.isArray(d.list)) {
+            d.list.forEach(id => { if (Object.keys(conns).length < MAX_PEERS) linkPeer(id); });
+        } else if (d.t === 'P') {
+            const first = !profiles[d.id];
+            profiles[d.id] = { n: d.n || 'Hành Giả', c: d.c || cfg };
+            if (remotes[d.id]) {
+                remotes[d.id].name = profiles[d.id].n;
+                remotes[d.id].cfg = profiles[d.id].c;
             }
-        } else if (data.t === 'P') {
-            const isNew = !playerProfiles[data.id];
-            playerProfiles[data.id] = { name: data.n || 'Hành Giả', cfg: data.c || avatarConfig };
-            if (remotePlayers[data.id]) {
-                remotePlayers[data.id].name = playerProfiles[data.id].name;
-                remotePlayers[data.id].cfg = playerProfiles[data.id].cfg;
-            }
-            if (isNew) {
-                relayPacket(data, conn.peer);
-            }
-        } else if (data.t === 'M') {
-            const prof = playerProfiles[data.id] || { name: 'Hành Giả', cfg: avatarConfig };
-            let rp = remotePlayers[data.id];
+            if (first) relay(d, conn.peer);
+        } else if (d.t === 'M') {
+            const pr = profiles[d.id] || { n: 'Hành Giả', c: cfg };
+            let rp = remotes[d.id];
             if (!rp) {
                 rp = {
-                    id: data.id,
-                    name: prof.name,
-                    cfg: prof.cfg,
-                    x: data.x,
-                    y: data.y,
-                    targetX: data.x,
-                    targetY: data.y,
-                    meditating: !!(data.f & 1),
-                    moving: !!(data.f & 2),
-                    holding: (data.f & 4) ? 'fruit' : ((data.f & 8) ? 'flower' : null),
-                    walkPhase: 0,
-                    pet: data.p || null,
-                    chat: data.ch || '',
+                    id: d.id, name: pr.n, cfg: pr.c,
+                    x: d.x, y: d.y, tx: d.x, ty: d.y,
+                    med: !!(d.f & 1), walk: 0, chat: d.ch || '',
                     lastSeen: Date.now()
                 };
-                remotePlayers[data.id] = rp;
-                if (!playerProfiles[data.id] && conn.open) {
-                    conn.send({ t: 'REQ_P', target: data.id });
-                }
+                remotes[d.id] = rp;
+                if (!profiles[d.id] && conn.open) conn.send({ t: 'QP', target: d.id });
             } else {
-                rp.targetX = data.x;
-                rp.targetY = data.y;
-                rp.meditating = !!(data.f & 1);
-                rp.moving = !!(data.f & 2);
-                rp.holding = (data.f & 4) ? 'fruit' : ((data.f & 8) ? 'flower' : null);
-                rp.pet = data.p || null;
-                rp.chat = data.ch || '';
+                rp.tx = d.x; rp.ty = d.y;
+                rp.med = !!(d.f & 1);
+                rp.chat = d.ch || '';
                 rp.lastSeen = Date.now();
             }
-
-            const hop = (data.h || 0) + 1;
-            if (hop <= 3) {
-                relayPacket({ ...data, h: hop }, conn.peer);
-            }
-            updateOnlineUI();
-        } else if (data.t === 'REQ_P') {
-            if (data.target === peer.id) {
-                broadcastMyProfile(conn);
-            } else if (playerProfiles[data.target] && conn.open) {
-                const p = playerProfiles[data.target];
-                conn.send({ t: 'P', id: data.target, n: p.name, c: p.cfg });
+            const hop = (d.h || 0) + 1;
+            if (hop <= 3) relay(Object.assign({}, d, { h: hop }), conn.peer);
+            updateOnlineHUD();
+        } else if (d.t === 'QP') {
+            if (d.target === peer.id) sendProfile(conn);
+            else if (profiles[d.target] && conn.open) {
+                const p = profiles[d.target];
+                conn.send({ t: 'P', id: d.target, n: p.n, c: p.c });
             }
         }
     });
-
     conn.on('close', () => {
-        delete connections[conn.peer];
-        delete remotePlayers[conn.peer];
-        updateOnlineUI();
+        delete conns[conn.peer];
+        updateOnlineHUD();
+    });
+    conn.on('error', () => {
+        delete conns[conn.peer];
+        updateOnlineHUD();
     });
 }
 
-function relayPacket(packet, excludePeerId) {
-    for (let id in connections) {
-        if (id !== excludePeerId && connections[id].open) {
-            connections[id].send(packet);
-        }
+function relay(pkt, exceptId) {
+    for (const k in conns) {
+        if (k !== exceptId && conns[k] && conns[k].open) conns[k].send(pkt);
     }
 }
 
-let syncTick = 0;
-function startSyncLoop() {
-    setInterval(() => {
-        if (!peer || !peer.id) return;
-        syncTick++;
-
-        // Cập nhật nhiệm vụ ngồi thiền mỗi giây nếu đang ngồi
-        if (isMeditating) {
-            questState.meditateCounterTimer++;
-            if (questState.meditateCounterTimer >= 5) { // mỗi 5 khung vòng lặp tương ứng 1 giây (ở interval 200ms)
-                questState.meditateCounterTimer = 0;
-                if (questState.meditateSeconds < 180) {
-                    questState.meditateSeconds++;
-                    const secsLeft = 180 - questState.meditateSeconds;
-                    const mins = Math.floor(secsLeft / 60);
-                    const secs = secsLeft % 60;
-                    const displayMins = Math.floor(questState.meditateSeconds / 60);
-                    const displaySecs = questState.meditateSeconds % 60;
-                    document.getElementById('quest-meditate').innerText = `🧘 Ngồi thiền (${displayMins}m ${displaySecs}s/3m): [${questState.meditateSeconds >= 180 ? '✓ Hoàn thành' : 'Đang thực hiện'}]`;
-                    if (questState.meditateSeconds >= 180 && !questState.meditateCompleted) {
-                        questState.meditateCompleted = true;
-                        document.getElementById('quest-meditate').style.color = '#81c784';
-                        addKarma(50);
-                    }
-                }
-            }
+function beginSync() {
+    if (syncTimer) return;
+    syncTimer = setInterval(() => {
+        if (!peer || peer.destroyed || !peer.id) return;
+        if (peer.disconnected) {
+            try { peer.reconnect(); } catch (_) {}
         }
-
-        const isMoving = !isMeditating && (walkPhase > 0);
-        let flags = 0;
-        if (isMeditating) flags |= 1;
-        if (isMoving) flags |= 2;
-        if (myHoldingItem === 'fruit') flags |= 4;
-        else if (myHoldingItem === 'flower') flags |= 8;
-
-        const rx = Math.round(myX);
-        const ry = Math.round(myY);
-        const packetSig = `${rx},${ry},${flags},${myPet || ''},${chatMessage}`;
-
-        const shouldSend = (packetSig !== lastSentPacket) || (syncTick % 10 === 0);
-        if (shouldSend) {
-            lastSentPacket = packetSig;
-            const movePkt = {
-                t: 'M',
-                id: peer.id,
-                x: rx,
-                y: ry,
-                f: flags,
-                p: myPet,
-                ch: chatMessage,
-                h: 0
-            };
-            for (let id in connections) {
-                if (connections[id].open) connections[id].send(movePkt);
-            }
+        tickCount++;
+        const flags = (isMeditating ? 1 : 0) | ((!isMeditating && walkPhase > 0) ? 2 : 0);
+        const rx = Math.round(myX), ry = Math.round(myY);
+        const sig = `${rx},${ry},${flags},${chatMsg}`;
+        if (sig !== lastSig || tickCount % 5 === 0) {
+            lastSig = sig;
+            const pkt = { t: 'M', id: peer.id, x: rx, y: ry, f: flags, ch: chatMsg, h: 0 };
+            for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
         }
 
         const now = Date.now();
-        let cleaned = false;
-        for (let rId in remotePlayers) {
-            if (now - remotePlayers[rId].lastSeen > 8000) {
-                delete remotePlayers[rId];
-                cleaned = true;
+        let changed = false;
+        for (const id in remotes) {
+            if (now - remotes[id].lastSeen > 25000) {
+                delete remotes[id];
+                changed = true;
             }
         }
-        if (cleaned) updateOnlineUI();
+        if (changed) updateOnlineHUD();
 
-        if (peer.id !== GLOBAL_ROOM_ID && Object.keys(connections).length === 0) {
-            connectToPeer(GLOBAL_ROOM_ID);
+        if (peer.id !== ROOM_ID && (!conns[ROOM_ID] || !conns[ROOM_ID].open)) {
+            if (conns[ROOM_ID]) delete conns[ROOM_ID];
+            linkPeer(ROOM_ID);
         }
     }, 200);
 }
 
-function updateOnlineUI() {
-    const count = 1 + Object.keys(remotePlayers).length;
-    document.getElementById('online-count').innerText = `● Hành giả online: ${count}`;
+function updateOnlineHUD() {
+    document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
 }
 
-function update(vnDate) {
-    const totalMins = vnDate.getHours() * 60 + vnDate.getMinutes();
-    if (totalMins % 3 === 0 && heron.lastTriggerMin !== totalMins) {
-        heron.active = true; heron.x = -60; heron.y = 1265; heron.lastTriggerMin = totalMins;
-    }
-    if (heron.active) {
-        heron.x += 2.2; if (heron.x > MAP_WIDTH + 80) heron.active = false;
-    }
-
-    if (totalMins % 5 === 0 && boat.lastTriggerMin !== totalMins) {
-        boat.active = true; boat.x = -80; boat.lastTriggerMin = totalMins;
-    }
-    if (boat.active) {
-        boat.x += 1.1; if (boat.x > MAP_WIDTH + 100) boat.active = false;
-    }
-
+function stepSimulation() {
     if (!isMeditating) {
-        let dx = 0, dy = 0, speed = 3.5;
-        if (keys['w'] || keys['arrowup']) dy -= 1;
-        if (keys['s'] || keys['arrowdown']) dy += 1;
-        if (keys['a'] || keys['arrowleft']) dx -= 1;
-        if (keys['d'] || keys['arrowright']) dx += 1;
+        let vx = 0, vy = 0;
+        const spd = 3.4;
+        if (keys['w'] || keys['arrowup']) vy -= 1;
+        if (keys['s'] || keys['arrowdown']) vy += 1;
+        if (keys['a'] || keys['arrowleft']) vx -= 1;
+        if (keys['d'] || keys['arrowright']) vx += 1;
 
-        if (dx !== 0 || dy !== 0) {
-            const len = Math.hypot(dx, dy);
-            dx = (dx / len) * speed; dy = (dy / len) * speed;
-            if (canMoveTo(myX + dx, myY)) myX += dx;
-            if (canMoveTo(myX, myY + dy)) myY += dy;
-            targetX = myX; targetY = myY; walkPhase += 0.25;
+        if (vx !== 0 || vy !== 0) {
+            const len = Math.hypot(vx, vy);
+            vx = (vx / len) * spd; vy = (vy / len) * spd;
+            if (canMove(myX + vx, myY)) myX += vx;
+            if (canMove(myX, myY + vy)) myY += vy;
+            targetX = myX; targetY = myY;
+            walkPhase += 0.24;
         } else {
-            const tdx = targetX - myX, tdy = targetY - myY, dist = Math.hypot(tdx, tdy);
-            if (dist > speed) {
-                const mx = (tdx / dist) * speed, my = (tdy / dist) * speed;
-                if (canMoveTo(myX + mx, myY)) myX += mx;
-                if (canMoveTo(myX, myY + my)) myY += my;
-                walkPhase += 0.25;
+            const dx = targetX - myX, dy = targetY - myY, dist = Math.hypot(dx, dy);
+            if (dist > spd) {
+                const mx = (dx / dist) * spd, my = (dy / dist) * spd;
+                if (canMove(myX + mx, myY)) myX += mx;
+                if (canMove(myX, myY + my)) myY += my;
+                walkPhase += 0.24;
             } else {
-                walkPhase = 0; checkInteractionArrival();
+                walkPhase = 0;
             }
         }
     }
 
-    for (let id in remotePlayers) {
-        const rp = remotePlayers[id];
-        const dx = rp.targetX - rp.x;
-        const dy = rp.targetY - rp.y;
+    for (const id in remotes) {
+        const rp = remotes[id];
+        const dx = rp.tx - rp.x, dy = rp.ty - rp.y;
         if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
-            rp.x += dx * 0.22;
-            rp.y += dy * 0.22;
-            rp.walkPhase += 0.22;
+            rp.x += dx * 0.24;
+            rp.y += dy * 0.24;
+            rp.walk += 0.22;
         } else {
-            rp.x = rp.targetX;
-            rp.y = rp.targetY;
-            rp.walkPhase = 0;
+            rp.x = rp.tx; rp.y = rp.ty; rp.walk = 0;
         }
     }
 
-    if (chatTimer > 0) { chatTimer--; if (chatTimer === 0) chatMessage = ''; }
+    if (chatTicks > 0) { chatTicks--; if (chatTicks === 0) chatMsg = ''; }
 }
 
-function drawBoatAndHeron(ctx, time, isNight, camLeft, camRight) {
-    if (boat.active && boat.x >= camLeft - 60 && boat.x <= camRight + 60) {
-        const bx = Math.round(boat.x);
-        const by = Math.round(getRiverCenterY(bx));
-        ctx.fillStyle = '#0c0e0c';
-        ctx.fillRect(bx - 26, by - 2, 52, 12);
-        ctx.fillStyle = isNight ? '#3e2723' : '#795548';
-        ctx.fillRect(bx - 24, by, 48, 8);
-        ctx.fillStyle = '#5d4037'; ctx.fillRect(bx - 4, by - 12, 8, 12);
-        ctx.fillStyle = '#f1c27d'; ctx.fillRect(bx - 4, by - 20, 8, 8);
+const renderList = [];
+let fpsFrames = 0, fpsLast = performance.now(), fpsVal = 60;
+
+function loop(time) {
+    syncCanvasResolution();
+
+    fpsFrames++;
+    if (time - fpsLast >= 1000) {
+        fpsVal = fpsFrames;
+        fpsFrames = 0;
+        fpsLast = time;
+        document.getElementById('hud-fps').textContent = fpsVal + ' FPS';
     }
 
-    if (heron.active && heron.x >= camLeft - 60 && heron.x <= camRight + 60) {
-        const hx = Math.round(heron.x);
-        const hy = Math.round(heron.y + Math.sin(time * 0.004) * 14);
-        const wingY = Math.round(Math.sin(time * 0.016) * 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(hx - 12, hy + wingY, 8, 3);
-        ctx.fillRect(hx - 4, hy, 8, 4);
-        ctx.fillRect(hx + 4, hy + wingY, 8, 3);
-        ctx.fillStyle = '#ff9800';
-        ctx.fillRect(hx + 4, hy + 1, 6, 2);
-    }
-}
+    const vn = getVNTime();
+    const night = isNight(vn);
+    document.getElementById('hud-clock').textContent =
+        String(vn.getHours()).padStart(2, '0') + ':' + String(vn.getMinutes()).padStart(2, '0');
 
-// Render các lời nguyện ước treo trên cây Bồ Đề
-function drawWishTreeBanners(ctx, time) {
-    const wx = WISH_TREE.x;
-    const wy = WISH_TREE.y;
-    
-    // Hiển thị lời nguyện ước mới nhất nổi nhẹ trên tán cây
-    if (communityWishes.length > 0) {
-        const latest = communityWishes[0];
-        const text = `"${latest.text}" — ${latest.author}`;
-        ctx.font = '11px "Courier New", monospace';
-        ctx.textAlign = 'center';
-        const tw = ctx.measureText(text).width;
-        
-        ctx.fillStyle = 'rgba(28, 34, 26, 0.9)';
-        ctx.strokeStyle = '#f4d03f'; ctx.lineWidth = 1.5;
-        ctx.fillRect(Math.round(wx - tw / 2 - 8), wy - 145, Math.round(tw + 16), 24);
-        ctx.strokeRect(Math.round(wx - tw / 2 - 8), wy - 145, Math.round(tw + 16), 24);
-        
-        ctx.fillStyle = '#f4d03f';
-        ctx.fillText(text, wx, wy - 130);
-    }
-}
+    stepSimulation();
+    buildStaticMap(night);
 
-// VÒNG LẶP CHÍNH
-const visibleEntitiesBuffer = [];
-let frameCounter = 0;
-let lastFpsCheck = performance.now();
-let currentFps = 60;
-
-function gameLoop(time) {
-    frameCounter++;
-    if (time - lastFpsCheck >= 1000) {
-        currentFps = frameCounter;
-        frameCounter = 0;
-        lastFpsCheck = time;
-        document.getElementById('fps-counter').innerText = `⚡ FPS: ${currentFps} | Hiển thị: ${visibleEntitiesBuffer.length}`;
-    }
-
-    const vnDate = getVietnamTime();
-    const isNight = isNightTime(vnDate);
-    const isAlmsTime = updateAlmsMonks(vnDate);
-
-    const hh = String(vnDate.getHours()).padStart(2, '0');
-    const mm = String(vnDate.getMinutes()).padStart(2, '0');
-    document.getElementById('vn-clock').innerText = `🕒 Giờ VN: ${hh}:${mm} (${isNight ? 'Ban Đêm' : 'Ban Ngày'})`;
-
-    update(vnDate);
-
-    ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#0c0e0c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const camX = Math.floor(canvas.width / 2 - myX);
     const camY = Math.floor(canvas.height / 2 - myY);
-
-    const camLeft = -camX;
-    const camTop = -camY;
-    const camRight = camLeft + canvas.width;
-    const camBottom = camTop + canvas.height;
+    const left = -camX, top = -camY, right = left + canvas.width, bottom = top + canvas.height;
 
     ctx.save();
     ctx.translate(camX, camY);
 
-    drawMapOptimized(ctx, time, isNight, isAlmsTime, camLeft, camTop, camRight, camBottom);
-    drawBoatAndHeron(ctx, time, isNight, camLeft, camRight);
-    drawWorldDrops(ctx, time, camLeft, camTop, camRight, camBottom);
-    drawWishTreeBanners(ctx, time);
+    const sx = Math.max(0, left), sy = Math.max(0, top);
+    const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
+    if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
+
+    drawPondKoi(ctx, time, night);
 
     if (!isMeditating && (Math.abs(targetX - myX) > 3 || Math.abs(targetY - myY) > 3)) {
-        const tx = Math.round(targetX), ty = Math.round(targetY);
-        ctx.strokeStyle = '#f4d03f'; ctx.lineWidth = 2;
-        ctx.strokeRect(tx - 8, ty - 8, 16, 16);
+        ctx.strokeStyle = '#f4d03f';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(Math.round(targetX) - 7, Math.round(targetY) - 7, 14, 14);
     }
 
-    for (let i = 0; i < monks.length; i++) {
-        const mk = monks[i];
-        if (mk.active && mk.x >= camLeft - 40 && mk.x <= camRight + 40 && mk.y >= camTop - 50 && mk.y <= camBottom + 50) {
-            drawAlmsMonk(ctx, mk, time);
+    renderList.length = 0;
+    renderList.push({ x: myX, y: myY, name: myName, cfg, med: isMeditating, walk: walkPhase, chat: chatMsg });
+    for (const id in remotes) {
+        const rp = remotes[id];
+        if (rp.x >= left - 90 && rp.x <= right + 90 && rp.y >= top - 110 && rp.y <= bottom + 90) {
+            renderList.push(rp);
+            if (renderList.length >= MAX_VISIBLE) break;
         }
     }
+    renderList.sort((a, b) => a.y - b.y);
 
-    visibleEntitiesBuffer.length = 0;
-    visibleEntitiesBuffer.push({
-        x: myX, y: myY, name: myName, cfg: avatarConfig,
-        meditating: isMeditating, walkPhase: walkPhase, chat: chatMessage,
-        pet: myPet, holding: myHoldingItem
-    });
-
-    const cullMargin = 90;
-    for (let id in remotePlayers) {
-        const rp = remotePlayers[id];
-        if (rp.x >= camLeft - cullMargin && rp.x <= camRight + cullMargin &&
-            rp.y >= camTop - cullMargin && rp.y <= camBottom + cullMargin) {
-            visibleEntitiesBuffer.push(rp);
-            if (visibleEntitiesBuffer.length >= MAX_VISIBLE_CROWD) break;
-        }
-    }
-
-    visibleEntitiesBuffer.sort((a, b) => a.y - b.y);
-
-    for (let i = 0; i < visibleEntitiesBuffer.length; i++) {
-        const p = visibleEntitiesBuffer[i];
-        drawCachedCharacter(ctx, p.x, p.y, p.name, p.cfg, p.meditating, p.walkPhase, p.chat, time, p.pet, p.holding);
+    for (let i = 0; i < renderList.length; i++) {
+        const e = renderList[i];
+        drawEntity(ctx, e.x, e.y, e.name, e.cfg, e.med, e.walk, e.chat, time);
     }
 
     ctx.restore();
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(loop);
 }
 
 initCreatorUI();
-requestAnimationFrame(gameLoop);
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
