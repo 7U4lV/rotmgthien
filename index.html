@@ -5,7 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Thiền Viện Tối Giản - V7.2</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <link rel="stylesheet" href="css/style.css?v=7.2">
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100dvh;
+            overflow: hidden; background: #090b09;
+            font-family: 'Courier New', Courier, monospace; color: #f4f6f2;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #game-frame {
+            position: relative;
+            width: min(100vw, calc(100dvh * 9 / 16));
+            height: min(100dvh, calc(100vw * 16 / 9));
+            background: #141a13; overflow: hidden;
+            box-shadow: 0 0 36px rgba(0,0,0,0.9);
+        }
+        #gameCanvas {
+            width: 100%; height: 100%; display: block;
+            image-rendering: pixelated; image-rendering: crisp-edges;
+            touch-action: none;
+        }
+        #ui-tooltip {
+            position: fixed; z-index: 60; pointer-events: none;
+            background: rgba(12,16,12,0.95); border: 1px solid #f4d03f;
+            color: #ffeb3b; padding: 4px 8px; border-radius: 5px;
+            font-size: 11px; display: none; white-space: nowrap;
+        }
+        #hud-mini {
+            position: absolute; top: 8px; left: 8px; z-index: 15;
+            background: rgba(10,14,10,0.75); border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 6px; padding: 5px 8px; font-size: 10px; line-height: 1.4;
+            pointer-events: none;
+        }
+        #icon-bar-top {
+            position: absolute; top: 8px; right: 8px; z-index: 20;
+            display: flex; gap: 6px;
+        }
+        .icon-btn {
+            width: 34px; height: 34px; border-radius: 8px;
+            background: rgba(18,24,18,0.88); border: 1px solid rgba(244,208,63,0.6);
+            color: #f4d03f; font-size: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
+        .icon-btn.muted { opacity: 0.6; color: #bbb; border-color: rgba(255,255,255,0.2); }
+        #chat-dock {
+            position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
+            display: none; gap: 6px; align-items: center;
+            background: rgba(12,16,12,0.85); border: 1px solid rgba(255,255,255,0.18);
+            padding: 5px; border-radius: 8px;
+        }
+        #chat-input {
+            flex: 1; min-width: 0; background: #0c100c; border: 1px solid #485644;
+            color: #fff; padding: 6px 8px; border-radius: 6px;
+            font-family: inherit; font-size: 12px; outline: none;
+        }
+        #login-screen {
+            position: absolute; inset: 0; background: rgba(10,14,10,0.96);
+            display: flex; justify-content: center; align-items: center; z-index: 30; padding: 10px;
+        }
+        #login-box {
+            width: 100%; background: #1a2118; border: 2px solid #5a6b52;
+            border-radius: 10px; padding: 14px;
+        }
+        .title-txt { margin: 0 0 10px; text-align: center; color: #f4d03f; font-size: 15px; }
+        .creator-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+        .preview-box {
+            width: 84px; height: 96px; background: #e8e6df;
+            border: 2px solid #75876b; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        #previewCanvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+        .opt-label { font-size: 10px; color: #b8c4b2; margin-bottom: 3px; display: block; }
+        .btn-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
+        .mini-btn {
+            background: #283326; border: 1px solid #4e5e48; color: #e0e6dc;
+            padding: 4px 7px; border-radius: 4px; font-family: inherit; font-size: 10px; cursor: pointer;
+        }
+        .mini-btn.active { background: #d4af37; color: #111; font-weight: bold; }
+        .swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #3c4639; cursor: pointer; }
+        .swatch.active { border-color: #fff; }
+        input[type="text"] {
+            width: 100%; background: #10140f; border: 1px solid #4e5e48;
+            color: #fff; padding: 7px 9px; border-radius: 6px; font-family: inherit; font-size: 12px; outline: none;
+        }
+        .go-btn {
+            width: 100%; background: #467832; border: 2px solid #79b85c; color: #fff;
+            padding: 10px; border-radius: 7px; font-family: inherit; font-size: 13px;
+            font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
     <div id="ui-tooltip"></div>
@@ -58,11 +147,572 @@
         </div>
     </div>
 
-    <script src="js/config.js?v=7.2"></script>
-    <script src="js/audio.js?v=7.2"></script>
-    <script src="js/character.js?v=7.2"></script>
-    <script src="js/map.js?v=7.2"></script>
-    <script src="js/net.js?v=7.2"></script>
-    <script src="js/main.js?v=7.2"></script>
+<script>
+const SKIN_LIST = ['#f4a27a', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
+const HAIR_LIST = ['Mái Ngang', 'Rẽ Ngôi', 'Búi Đỉnh', 'Tóc Dài', 'Đầu Trọc'];
+const OUTFIT_LIST = [
+    { name: 'Áo Lam', main: '#46829e', trim: '#6b5344', pants: '#233b46' },
+    { name: 'Áo Nâu', main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
+    { name: 'Áo Vàng', main: '#d89b3c', trim: '#8c5819', pants: '#37474f' },
+    { name: 'Áo Hồng', main: '#c96b88', trim: '#7d3c50', pants: '#2d3748' }
+];
+
+const MAP_W = 1800;
+const MAP_H = 1500;
+const ROOM_ID = 'thienvien_v72_room';
+const MAX_CONNS = 20;
+const MAX_RENDER = 100;
+const IDLE_FRAME_MS = 1000 / 24;
+
+let cfg = {
+    gender: 'male',
+    skin: SKIN_LIST[0],
+    hairStyle: 0,
+    hairColor: '#1e292e',
+    hairShade: '#3d545c',
+    outfitId: 0
+};
+
+const tipEl = document.getElementById('ui-tooltip');
+let tipTimer = null;
+function showTip(el) {
+    const t = el.getAttribute('data-tip');
+    if (!t) return;
+    tipEl.textContent = t;
+    tipEl.style.display = 'block';
+    const r = el.getBoundingClientRect();
+    tipEl.style.left = Math.min(window.innerWidth - tipEl.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tipEl.offsetWidth / 2)) + 'px';
+    tipEl.style.top = Math.max(8, r.bottom + 6) + 'px';
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(hideTip, 2000);
+}
+function hideTip() { tipEl.style.display = 'none'; }
+
+let audioCtx = null, isMusicOn = false, musicTimer = null;
+const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00];
+function toggleMusic() {
+    const btn = document.getElementById('btn-music');
+    isMusicOn = !isMusicOn;
+    btn.classList.toggle('active', isMusicOn);
+    btn.classList.toggle('muted', !isMusicOn);
+    if (isMusicOn) {
+        if (!audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        if (!musicTimer) {
+            let i = 0;
+            musicTimer = setInterval(() => {
+                if (!isMusicOn || document.hidden || !audioCtx || audioCtx.state !== 'running') return;
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(NOTES[i++ % NOTES.length], now);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.025, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 2.05);
+            }, 2600);
+        }
+    }
+}
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && isMusicOn && audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
+});
+
+function pad20(rows) {
+    return rows.map(s => s.length === 20 ? s : s.padEnd(20, '.').slice(0, 20));
+}
+
+function bakePixelMatrix(grid, pal, ps = 3, outline = true) {
+    const clean = pad20(grid);
+    const h = clean.length, w = 20, pad = outline ? 1 : 0;
+    const c = document.createElement('canvas');
+    c.width = (w + pad * 2) * ps;
+    c.height = (h + pad * 2) * ps;
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = false;
+
+    if (outline) {
+        cx.fillStyle = '#0c0e0c';
+        for (let r = 0; r < h; r++) {
+            for (let col = 0; col < w; col++) {
+                const ch = clean[r][col];
+                if (ch !== '.' && pal[ch]) {
+                    const gx = (col + pad) * ps, gy = (r + pad) * ps;
+                    cx.fillRect(gx - ps, gy, ps, ps);
+                    cx.fillRect(gx + ps, gy, ps, ps);
+                    cx.fillRect(gx, gy - ps, ps, ps);
+                    cx.fillRect(gx, gy + ps, ps, ps);
+                }
+            }
+        }
+    }
+
+    for (let r = 0; r < h; r++) {
+        for (let col = 0; col < w; col++) {
+            const ch = clean[r][col];
+            if (ch !== '.' && pal[ch]) {
+                cx.fillStyle = pal[ch];
+                cx.fillRect((col + pad) * ps, (r + pad) * ps, ps, ps);
+            }
+        }
+    }
+    return c;
+}
+
+function buildCharGrid20x24(c, pose) {
+    const isMed = (pose === 3);
+    const isFemale = (c.gender === 'female');
+    const eyeTop = isMed ? '....SS.ll...ll.SS....' : '....SS.EE...EE.SS....';
+    const eyeBot = isMed ? '....SS.ll...ll.SS....' : '....SS.EW...EW.SS....';
+
+    const g = [
+        '.......HHHHHH.......',
+        '.....HHhHHHHHHhHH...',
+        '....HHhHHHHHHHHhHH..',
+        '....HHHHHHHHHHHHHH..',
+        '....SSSSSSSSSSSSSS..',
+        '....SS.BB...BB.SS...',
+        eyeTop,
+        eyeBot,
+        '....SSSSSSNNSSSSSS..',
+        '....SSSSSSNNSSSSSS..',
+        '....SSSS.MMMM.SSSS..',
+        '.....SSSSSSSSSSSS...',
+        '........SSSSSS......',
+        '.....TTTCCCCCCCTT...',
+        '....TT.CCCCCCCC.TT..',
+        '....T..CCCCCCCC..T..',
+        '....S..CCCCCCCC..S..',
+        '.......PPPPPPPP.....',
+        '.......PPP..PPP.....',
+        '.......PPP..PPP.....',
+        '.......PPP..PPP.....',
+        '.......PPP..PPP.....',
+        '.......FFF..FFF.....',
+        '.......FFF..FFF.....'
+    ];
+
+    const st = c.hairStyle % 5;
+    if (st === 0) {
+        g[2] = '....HHhHHHHHHHhHH...';
+        g[3] = '....HHHHHHHHHHHHHH..';
+        g[4] = '....SSHHHHHHHHHHSS..';
+    } else if (st === 1) {
+        g[2] = '....HHh.HHHHHHhHH...';
+        g[3] = '....HH..HHHHHHHHHH..';
+        g[4] = '....SS..SHHHHHHHSS..';
+    } else if (st === 2) {
+        g[0] = '.........HHHH.......';
+        g[1] = '........HHhhHH......';
+        g[2] = '....HHhHHHHHHHHhHH..';
+    } else if (st === 3) {
+        for (let r = 4; r <= 15; r++) {
+            const a = g[r].split('');
+            a[3] = 'H'; a[16] = 'H';
+            g[r] = a.join('');
+        }
+    } else if (st === 4) {
+        g[0] = '.......SSSSSSSS.....';
+        g[1] = '.....SSSSSSSSSSSS...';
+        g[2] = '....SSSSSSSSSSSSSS..';
+        g[3] = '....SSSSSSSSSSSSSS..';
+    }
+
+    if (isFemale && st !== 4) {
+        for (let r = 5; r <= 8; r++) {
+            const a = g[r].split('');
+            a[3] = (r % 2 === 0) ? 'H' : 'h';
+            a[16] = (r % 2 === 0) ? 'H' : 'h';
+            g[r] = a.join('');
+        }
+    }
+
+    if (pose === 1) {
+        g[18] = '.......PPPP..PP.....';
+        g[19] = '.......PPP...PP.....';
+        g[20] = '.......PPP...PP.....';
+        g[21] = '.......PPP...PP.....';
+        g[22] = '.......FFF....FF....';
+        g[23] = '.......FFF....FF....';
+    } else if (pose === 2) {
+        g[18] = '.......PP..PPPP.....';
+        g[19] = '.......PP...PPP.....';
+        g[20] = '.......PP...PPP.....';
+        g[21] = '.......PP...PPP.....';
+        g[22] = '......FF....FFF.....';
+        g[23] = '......FF....FFF.....';
+    } else if (isMed) {
+        return pad20(g.slice(0, 13).concat([
+            '....TTTCCCCCCCTT....',
+            '...TTT.CCCCCCCC.TTT.',
+            '....PPPPPPPPPPPPPP..',
+            '...PPPPPPPPPPPPPPPP.',
+            '....FFFFFFFFFFFFFF..'
+        ]));
+    }
+
+    return pad20(g);
+}
+
+const charCache = new Map();
+function getCharFrames(name, c) {
+    const key = `${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.outfitId}`;
+    if (charCache.has(key)) return charCache.get(key);
+    if (charCache.size > 600) charCache.delete(charCache.keys().next().value);
+
+    const out = OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0];
+    const pal = {
+        S: c.skin, H: c.hairColor, h: c.hairShade, B: c.hairColor,
+        E: '#141716', W: '#ffffff', l: '#2b2420', N: '#a8644c',
+        M: '#df687a', C: out.main, T: out.trim, P: out.pants, F: '#0f1211'
+    };
+
+    const frames = [0, 1, 2, 3].map(pose => {
+        const spr = bakePixelMatrix(buildCharGrid20x24(c, pose), pal, 3, true);
+        const cv = document.createElement('canvas');
+        cv.width = 144;
+        cv.height = 104;
+        const cx = cv.getContext('2d');
+        cx.imageSmoothingEnabled = false;
+
+        cx.fillStyle = 'rgba(0,0,0,0.4)';
+        cx.beginPath();
+        cx.ellipse(72, 86, pose === 3 ? 22 : 15, 5, 0, 0, Math.PI * 2);
+        cx.fill();
+
+        const topY = Math.round(86 - spr.height + ((pose === 1 || pose === 2) ? -2 : 0));
+        cx.drawImage(spr, Math.round(72 - spr.width / 2), topY);
+
+        if (name) {
+            cx.font = 'bold 10px "Courier New", monospace';
+            cx.textAlign = 'center';
+            cx.fillStyle = '#ffeb3b';
+            cx.fillText(name, 72, Math.max(12, topY - 6));
+        }
+        return cv;
+    });
+
+    charCache.set(key, frames);
+    return frames;
+}
+
+function drawHeadHalo(ctx, cx, cy, t) {
+    const r = 24 + Math.sin(t * 0.004) * 2;
+    ctx.strokeStyle = '#ffca28';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function drawPerson(ctx, e, t) {
+    const rx = Math.round(e.x), ry = Math.round(e.y);
+    const frames = getCharFrames(e.name, e.cfg);
+    const idx = e.med ? 3 : (e.walk > 0.01 ? (Math.sin(e.walk) >= 0 ? 1 : 2) : 0);
+    if (e.med) drawHeadHalo(ctx, rx, ry - 48, t);
+    ctx.drawImage(frames[idx], rx - 72, ry - 86);
+    if (e.chat) {
+        ctx.font = '11px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 104;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 18);
+        ctx.fillStyle = '#111';
+        ctx.fillText(e.chat, rx, by + 13);
+    }
+}
+
+function renderPreview() {
+    const pc = document.getElementById('previewCanvas');
+    if (!pc) return;
+    const px = pc.getContext('2d');
+    px.imageSmoothingEnabled = false;
+    px.clearRect(0, 0, pc.width, pc.height);
+    const out = OUTFIT_LIST[cfg.outfitId] || OUTFIT_LIST[0];
+    const spr = bakePixelMatrix(buildCharGrid20x24(cfg, 0), {
+        S: cfg.skin, H: cfg.hairColor, h: cfg.hairShade, B: cfg.hairColor,
+        E: '#141716', W: '#ffffff', l: '#2b2420', N: '#a8644c',
+        M: '#df687a', C: out.main, T: out.trim, P: out.pants, F: '#0f1211'
+    }, 3, true);
+    px.drawImage(spr, Math.round(38 - spr.width / 2), Math.round(43 - spr.height / 2));
+}
+
+function initCreator() {
+    const sr = document.getElementById('skin-row');
+    SKIN_LIST.forEach((col, i) => {
+        const d = document.createElement('div'); d.className = 'swatch' + (i === 0 ? ' active' : ''); d.style.background = col;
+        d.onclick = () => { cfg.skin = col; sr.querySelectorAll('.swatch').forEach(x => x.classList.remove('active')); d.classList.add('active'); renderPreview(); };
+        sr.appendChild(d);
+    });
+    const hr = document.getElementById('hair-row');
+    HAIR_LIST.forEach((h, i) => {
+        const b = document.createElement('button'); b.className = 'mini-btn' + (i === 0 ? ' active' : ''); b.textContent = h;
+        b.onclick = () => { cfg.hairStyle = i; hr.querySelectorAll('.mini-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderPreview(); };
+        hr.appendChild(b);
+    });
+    const or = document.getElementById('outfit-row');
+    OUTFIT_LIST.forEach((o, i) => {
+        const b = document.createElement('button'); b.className = 'mini-btn' + (i === 0 ? ' active' : ''); b.textContent = o.name;
+        b.onclick = () => { cfg.outfitId = i; or.querySelectorAll('.mini-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderPreview(); };
+        or.appendChild(b);
+    });
+    renderPreview();
+}
+
+function setGender(g, btn) {
+    cfg.gender = g;
+    document.querySelectorAll('#gender-row .mini-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderPreview();
+}
+
+const staticCanvas = document.createElement('canvas');
+staticCanvas.width = MAP_W;
+staticCanvas.height = MAP_H;
+const staticCtx = staticCanvas.getContext('2d', { alpha: false });
+let cachedNight = null;
+
+function buildMap(night) {
+    if (cachedNight === night) return;
+    cachedNight = night;
+    const s = staticCtx;
+    s.fillStyle = night ? '#142014' : '#356e35';
+    s.fillRect(0, 0, MAP_W, MAP_H);
+    s.fillStyle = night ? '#0d1829' : '#8ec5f5';
+    s.fillRect(0, 0, MAP_W, 180);
+    s.strokeStyle = night ? '#4a382e' : '#9e6b4b';
+    s.lineWidth = 56;
+    s.beginPath(); s.moveTo(900, 460); s.lineTo(900, 1420); s.stroke();
+    s.fillStyle = night ? '#143f59' : '#4682be';
+    s.fillRect(0, 1020, MAP_W, 84);
+    s.fillStyle = night ? '#3e2723' : '#6d4c41';
+    s.fillRect(855, 1012, 90, 100);
+    s.fillStyle = night ? '#4a3d31' : '#d7bfa0';
+    s.fillRect(660, 210, 480, 250);
+    s.strokeStyle = '#111'; s.lineWidth = 3; s.strokeRect(660, 210, 480, 250);
+}
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+function resizeCanvas() {
+    const r = document.getElementById('game-frame').getBoundingClientRect();
+    canvas.width = Math.max(360, Math.round(r.width));
+    canvas.height = Math.max(640, Math.round(r.height));
+    ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+let myName = 'Hành Giả', myX = 900, myY = 760, tx = 900, ty = 760;
+let isMed = false, walk = 0, chatMsg = '', chatTicks = 0;
+const keys = {};
+
+window.addEventListener('keydown', e => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase(); keys[k] = true;
+    if (e.code === 'Space') { e.preventDefault(); toggleMeditate(); }
+    else if (k === 'm') toggleMusic();
+    else if (e.key === 'Enter') document.getElementById('chat-input').focus();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+canvas.addEventListener('pointerdown', e => {
+    if (isMed) return;
+    const r = canvas.getBoundingClientRect();
+    tx = (e.clientX - r.left) - (canvas.width / 2 - myX);
+    ty = (e.clientY - r.top) - (canvas.height / 2 - myY);
+});
+
+function toggleMeditate() {
+    isMed = !isMed;
+    document.getElementById('btn-meditate').classList.toggle('active', isMed);
+    if (isMed) { tx = myX; ty = myY; }
+}
+
+function sendChat() {
+    const inp = document.getElementById('chat-input');
+    const v = inp.value.trim();
+    if (v) { chatMsg = v; chatTicks = 300; }
+    inp.value = ''; inp.blur();
+}
+function onChatKey(e) { if (e.key === 'Enter') sendChat(); }
+
+let peer = null, syncTimer = null, seq = 0;
+const conns = {}, remotes = {}, profiles = {}, seen = new Set();
+
+function enterGame() {
+    myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('chat-dock').style.display = 'flex';
+    startP2P();
+}
+
+function makePeer(id) {
+    const p = id ? new Peer(id) : new Peer();
+    p.on('open', () => {
+        if (p.id !== ROOM_ID) connectTo(ROOM_ID);
+        startSync();
+    });
+    p.on('disconnected', () => { try { if (!p.destroyed) p.reconnect(); } catch (_) {} });
+    p.on('error', err => {
+        if (err && err.type === 'unavailable-id' && id) { try { p.destroy(); } catch (_) {} peer = makePeer(null); }
+        else startSync();
+    });
+    p.on('connection', bindConn);
+    return p;
+}
+
+function startP2P() {
+    if (typeof Peer === 'undefined') return;
+    peer = makePeer(ROOM_ID);
+}
+
+function connectTo(id) {
+    if (!id || !peer || peer.destroyed || conns[id] || id === peer.id || Object.keys(conns).length >= MAX_CONNS) return;
+    try { bindConn(peer.connect(id, { reliable: false })); } catch (_) {}
+}
+
+function bindConn(conn) {
+    conns[conn.peer] = conn;
+    conn.on('open', () => {
+        if (conn.open) conn.send({ t: 'P', id: peer.id, n: myName, c: cfg });
+        const peers = Object.keys(conns).filter(x => x !== conn.peer).slice(0, 10);
+        if (peers.length && conn.open) conn.send({ t: 'L', l: peers });
+    });
+    conn.on('data', d => {
+        if (!d || !d.t) return;
+        if (d.t === 'L' && Array.isArray(d.l)) d.l.forEach(connectTo);
+        else if (d.t === 'P') {
+            profiles[d.id] = { n: d.n || 'Hành Giả', c: d.c || cfg };
+            if (remotes[d.id]) { remotes[d.id].name = profiles[d.id].n; remotes[d.id].cfg = profiles[d.id].c; }
+        } else if (d.t === 'M') {
+            if (d.mid) {
+                if (seen.has(d.mid)) return;
+                seen.add(d.mid);
+                if (seen.size > 1200) seen.delete(seen.values().next().value);
+            }
+            const pr = profiles[d.id] || { n: 'Hành Giả', c: cfg };
+            let rp = remotes[d.id];
+            if (!rp) {
+                rp = remotes[d.id] = { id: d.id, name: pr.n, cfg: pr.c, x: d.x, y: d.y, tx: d.x, ty: d.y, med: !!(d.f & 1), walk: 0, chat: d.ch || '', ts: Date.now() };
+                if (!profiles[d.id] && conn.open) conn.send({ t: 'QP', target: d.id });
+            } else {
+                rp.tx = d.x; rp.ty = d.y; rp.med = !!(d.f & 1); rp.chat = d.ch || ''; rp.ts = Date.now();
+            }
+            if ((d.h || 0) < 3) {
+                for (const k in conns) if (k !== conn.peer && conns[k] && conns[k].open) conns[k].send(Object.assign({}, d, { h: (d.h || 0) + 1 }));
+            }
+            document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
+        } else if (d.t === 'QP' && conn.open) {
+            if (d.target === peer.id) conn.send({ t: 'P', id: peer.id, n: myName, c: cfg });
+            else if (profiles[d.target]) conn.send({ t: 'P', id: d.target, n: profiles[d.target].n, c: profiles[d.target].c });
+        }
+    });
+    conn.on('close', () => { delete conns[conn.peer]; });
+    conn.on('error', () => { delete conns[conn.peer]; });
+}
+
+function startSync() {
+    if (syncTimer) return;
+    syncTimer = setInterval(() => {
+        if (!peer || peer.destroyed || !peer.id) return;
+        if (peer.disconnected) { try { peer.reconnect(); } catch (_) {} }
+        const flags = (isMed ? 1 : 0) | ((!isMed && walk > 0) ? 2 : 0);
+        const pkt = { t: 'M', mid: `${peer.id}_${++seq}`, id: peer.id, x: Math.round(myX), y: Math.round(myY), f: flags, ch: chatMsg, h: 0 };
+        for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
+
+        const now = Date.now();
+        let remChanged = false;
+        for (const id in remotes) if (now - remotes[id].ts > 22000) { delete remotes[id]; remChanged = true; }
+        if (remChanged) document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
+        if (peer.id !== ROOM_ID && (!conns[ROOM_ID] || !conns[ROOM_ID].open)) { delete conns[ROOM_ID]; connectTo(ROOM_ID); }
+    }, 250);
+}
+
+function stepSim() {
+    if (!isMed) {
+        let vx = 0, vy = 0; const spd = 3.5;
+        if (keys['w'] || keys['arrowup']) vy -= 1;
+        if (keys['s'] || keys['arrowdown']) vy += 1;
+        if (keys['a'] || keys['arrowleft']) vx -= 1;
+        if (keys['d'] || keys['arrowright']) vx += 1;
+        if (vx || vy) {
+            const l = Math.hypot(vx, vy);
+            myX = Math.max(30, Math.min(MAP_W - 30, myX + (vx / l) * spd));
+            myY = Math.max(190, Math.min(MAP_H - 30, myY + (vy / l) * spd));
+            tx = myX; ty = myY; walk += 0.25;
+        } else {
+            const dx = tx - myX, dy = ty - myY, d = Math.hypot(dx, dy);
+            if (d > spd) { myX += (dx / d) * spd; myY += (dy / d) * spd; walk += 0.25; }
+            else walk = 0;
+        }
+    }
+    for (const id in remotes) {
+        const rp = remotes[id], dx = rp.tx - rp.x, dy = rp.ty - rp.y;
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) { rp.x += dx * 0.25; rp.y += dy * 0.25; rp.walk += 0.22; }
+        else { rp.x = rp.tx; rp.y = rp.ty; rp.walk = 0; }
+    }
+    if (chatTicks > 0 && --chatTicks === 0) chatMsg = '';
+}
+
+let lastIdleFrame = 0, fpsCnt = 0, fpsTick = performance.now();
+const list = [];
+
+function loop(now) {
+    requestAnimationFrame(loop);
+    if (document.hidden) return;
+
+    const isMoving = !isMed && (walk > 0 || keys['w'] || keys['a'] || keys['s'] || keys['d'] || keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'] || Math.hypot(tx - myX, ty - myY) > 3.5);
+    if (!isMoving && (now - lastIdleFrame < IDLE_FRAME_MS)) return;
+    lastIdleFrame = now;
+
+    fpsCnt++;
+    if (now - fpsTick >= 1000) {
+        document.getElementById('hud-fps').textContent = fpsCnt + ' FPS';
+        fpsCnt = 0; fpsTick = now;
+    }
+
+    const d = new Date(Date.now() + 7 * 3600000);
+    const h = d.getUTCHours(), m = d.getUTCMinutes();
+    document.getElementById('hud-clock').textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    const night = (h >= 18 || h < 6);
+
+    stepSim();
+    buildMap(night);
+
+    const camX = Math.floor(canvas.width / 2 - myX);
+    const camY = Math.floor(canvas.height / 2 - myY);
+    const left = -camX, top = -camY, right = left + canvas.width, bottom = top + canvas.height;
+
+    ctx.save();
+    ctx.translate(camX, camY);
+    const sx = Math.max(0, left), sy = Math.max(0, top);
+    const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
+    if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
+
+    list.length = 0;
+    list.push({ x: myX, y: myY, name: myName, cfg, med: isMed, walk, chat: chatMsg });
+    for (const id in remotes) {
+        const rp = remotes[id];
+        if (rp.x >= left - 72 && rp.x <= right + 72 && rp.y >= top - 90 && rp.y <= bottom + 72) {
+            list.push(rp);
+            if (list.length >= MAX_RENDER) break;
+        }
+    }
+    list.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < list.length; i++) drawPerson(ctx, list[i], now);
+    ctx.restore();
+}
+
+initCreator();
+requestAnimationFrame(loop);
+</script>
 </body>
 </html>
