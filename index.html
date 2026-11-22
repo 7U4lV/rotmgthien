@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản - V7.2</title>
+    <title>Thiền Viện Tối Giản - V7.4</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -33,7 +33,7 @@
         }
         #hud-mini {
             position: absolute; top: 8px; left: 8px; z-index: 15;
-            background: rgba(10,14,10,0.75); border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(10,14,10,0.78); border: 1px solid rgba(255,255,255,0.16);
             border-radius: 6px; padding: 5px 8px; font-size: 10px; line-height: 1.4;
             pointer-events: none;
         }
@@ -43,7 +43,7 @@
         }
         .icon-btn {
             width: 34px; height: 34px; border-radius: 8px;
-            background: rgba(18,24,18,0.88); border: 1px solid rgba(244,208,63,0.6);
+            background: rgba(18,24,18,0.88); border: 1px solid rgba(244,208,63,0.65);
             color: #f4d03f; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
@@ -52,7 +52,7 @@
         #chat-dock {
             position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
             display: none; gap: 6px; align-items: center;
-            background: rgba(12,16,12,0.85); border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(12,16,12,0.86); border: 1px solid rgba(255,255,255,0.2);
             padding: 5px; border-radius: 8px;
         }
         #chat-input {
@@ -71,7 +71,7 @@
         .title-txt { margin: 0 0 10px; text-align: center; color: #f4d03f; font-size: 15px; }
         .creator-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
         .preview-box {
-            width: 84px; height: 96px; background: #e8e6df;
+            width: 96px; height: 120px; background: #e6e4dc;
             border: 2px solid #75876b; border-radius: 8px;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
@@ -113,10 +113,10 @@
 
         <div id="login-screen">
             <div id="login-box">
-                <h2 class="title-txt">THIỀN VIỆN V7.2</h2>
+                <h2 class="title-txt">THIỀN VIỆN V7.4</h2>
                 <div class="creator-row">
                     <div class="preview-box">
-                        <canvas id="previewCanvas" width="76" height="86"></canvas>
+                        <canvas id="previewCanvas" width="92" height="116"></canvas>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <span class="opt-label">Giới tính</span>
@@ -148,18 +148,22 @@
     </div>
 
 <script>
-const SKIN_LIST = ['#f4a27a', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
+const SKIN_LIST = ['#f2a679', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
 const HAIR_LIST = ['Mái Ngang', 'Rẽ Ngôi', 'Búi Đỉnh', 'Tóc Dài', 'Đầu Trọc'];
 const OUTFIT_LIST = [
-    { name: 'Áo Lam', main: '#46829e', trim: '#6b5344', pants: '#233b46' },
-    { name: 'Áo Nâu', main: '#8d6e63', trim: '#5d4037', pants: '#3e2723' },
-    { name: 'Áo Vàng', main: '#d89b3c', trim: '#8c5819', pants: '#37474f' },
-    { name: 'Áo Hồng', main: '#c96b88', trim: '#7d3c50', pants: '#2d3748' }
+    { name: 'Áo Lam',  shirt: '#5fa8c9', vest: '#6d4c3d', pants: '#2d6a8e', skirt: '#4a6b53' },
+    { name: 'Áo Nâu',  shirt: '#a1887f', vest: '#5d4037', pants: '#4e342e', skirt: '#5d4037' },
+    { name: 'Áo Vàng', shirt: '#e6b85c', vest: '#8d5524', pants: '#37474f', skirt: '#6d4c41' },
+    { name: 'Áo Hồng', shirt: '#d9829b', vest: '#7a3e52', pants: '#374151', skirt: '#5c3d4e' }
 ];
 
-const MAP_W = 1800;
-const MAP_H = 1500;
-const ROOM_ID = 'thienvien_v72_room';
+const MAP_W = 2000;
+const MAP_H = 1700;
+const TEMPLE = { x: 720, y: 270, w: 560, h: 320 };
+const POND = { x: 1420, y: 920, r: 165 };
+const BRIDGE_X = 1000;
+const RIVER_HALF = 56;
+const ROOM_ID = 'thienvien_v74_room';
 const MAX_CONNS = 20;
 const MAX_RENDER = 100;
 const IDLE_FRAME_MS = 1000 / 24;
@@ -167,9 +171,9 @@ const IDLE_FRAME_MS = 1000 / 24;
 let cfg = {
     gender: 'male',
     skin: SKIN_LIST[0],
-    hairStyle: 0,
-    hairColor: '#1e292e',
-    hairShade: '#3d545c',
+    hairStyle: 1,
+    hairColor: '#1d2428',
+    hairShade: '#3d4c54',
     outfitId: 0
 };
 
@@ -189,7 +193,7 @@ function showTip(el) {
 function hideTip() { tipEl.style.display = 'none'; }
 
 let audioCtx = null, isMusicOn = false, musicTimer = null;
-const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00];
+const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
 function toggleMusic() {
     const btn = document.getElementById('btn-music');
     isMusicOn = !isMusicOn;
@@ -209,13 +213,13 @@ function toggleMusic() {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(NOTES[i++ % NOTES.length], now);
+                osc.frequency.setValueAtTime(NOTES[(i++ * 2) % NOTES.length], now);
                 gain.gain.setValueAtTime(0.0001, now);
-                gain.gain.exponentialRampToValueAtTime(0.025, now + 0.1);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
+                gain.gain.exponentialRampToValueAtTime(0.03, now + 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + 2.05);
-            }, 2600);
+                osc.start(now); osc.stop(now + 2.25);
+            }, 2400);
         }
     }
 }
@@ -225,140 +229,180 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-function pad20(rows) {
-    return rows.map(s => s.length === 20 ? s : s.padEnd(20, '.').slice(0, 20));
-}
+// Dựng nhân vật chi tiết 42x56 lấy cảm hứng từ mẫu nhân vật đứng & ngồi thiền
+function createDetailedPortraitCanvas(c, isMed, stepFrame) {
+    const W = 42, H = 56, S = 2;
+    const cv = document.createElement('canvas');
+    cv.width = W * S;
+    cv.height = H * S;
+    const x = cv.getContext('2d');
+    x.imageSmoothingEnabled = false;
 
-function bakePixelMatrix(grid, pal, ps = 3, outline = true) {
-    const clean = pad20(grid);
-    const h = clean.length, w = 20, pad = outline ? 1 : 0;
-    const c = document.createElement('canvas');
-    c.width = (w + pad * 2) * ps;
-    c.height = (h + pad * 2) * ps;
-    const cx = c.getContext('2d');
-    cx.imageSmoothingEnabled = false;
+    const out = OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0];
+    const skin = c.skin;
+    const skinShadow = '#c97a54';
+    const hair = c.hairColor;
+    const hairHi = c.hairShade;
+    const ink = '#141518';
 
-    if (outline) {
-        cx.fillStyle = '#0c0e0c';
-        for (let r = 0; r < h; r++) {
-            for (let col = 0; col < w; col++) {
-                const ch = clean[r][col];
-                if (ch !== '.' && pal[ch]) {
-                    const gx = (col + pad) * ps, gy = (r + pad) * ps;
-                    cx.fillRect(gx - ps, gy, ps, ps);
-                    cx.fillRect(gx + ps, gy, ps, ps);
-                    cx.fillRect(gx, gy - ps, ps, ps);
-                    cx.fillRect(gx, gy + ps, ps, ps);
-                }
-            }
-        }
+    function px(gx, gy, col, gw = 1, gh = 1) {
+        x.fillStyle = col;
+        x.fillRect(Math.round(gx * S), Math.round(gy * S), Math.round(gw * S), Math.round(gh * S));
     }
 
-    for (let r = 0; r < h; r++) {
-        for (let col = 0; col < w; col++) {
-            const ch = clean[r][col];
-            if (ch !== '.' && pal[ch]) {
-                cx.fillStyle = pal[ch];
-                cx.fillRect((col + pad) * ps, (r + pad) * ps, ps, ps);
-            }
-        }
-    }
-    return c;
-}
+    const headY = isMed ? 12 : 4;
+    const headX = 21;
 
-function buildCharGrid20x24(c, pose) {
-    const isMed = (pose === 3);
-    const isFemale = (c.gender === 'female');
-    const eyeTop = isMed ? '....SS.ll...ll.SS....' : '....SS.EE...EE.SS....';
-    const eyeBot = isMed ? '....SS.ll...ll.SS....' : '....SS.EW...EW.SS....';
+    // Viền đầu + mặt
+    px(headX - 8, headY + 3, ink, 16, 15);
+    px(headX - 7, headY + 4, skin, 14, 13);
+    px(headX - 7, headY + 14, skinShadow, 14, 3);
+    px(headX - 8, headY + 8, skinShadow, 1, 5);
+    px(headX + 7, headY + 8, skinShadow, 1, 5);
 
-    const g = [
-        '.......HHHHHH.......',
-        '.....HHhHHHHHHhHH...',
-        '....HHhHHHHHHHHhHH..',
-        '....HHHHHHHHHHHHHH..',
-        '....SSSSSSSSSSSSSS..',
-        '....SS.BB...BB.SS...',
-        eyeTop,
-        eyeBot,
-        '....SSSSSSNNSSSSSS..',
-        '....SSSSSSNNSSSSSS..',
-        '....SSSS.MMMM.SSSS..',
-        '.....SSSSSSSSSSSS...',
-        '........SSSSSS......',
-        '.....TTTCCCCCCCTT...',
-        '....TT.CCCCCCCC.TT..',
-        '....T..CCCCCCCC..T..',
-        '....S..CCCCCCCC..S..',
-        '.......PPPPPPPP.....',
-        '.......PPP..PPP.....',
-        '.......PPP..PPP.....',
-        '.......PPP..PPP.....',
-        '.......PPP..PPP.....',
-        '.......FFF..FFF.....',
-        '.......FFF..FFF.....'
-    ];
-
+    // Tóc đỉnh đầu theo 5 kiểu
     const st = c.hairStyle % 5;
-    if (st === 0) {
-        g[2] = '....HHhHHHHHHHhHH...';
-        g[3] = '....HHHHHHHHHHHHHH..';
-        g[4] = '....SSHHHHHHHHHHSS..';
-    } else if (st === 1) {
-        g[2] = '....HHh.HHHHHHhHH...';
-        g[3] = '....HH..HHHHHHHHHH..';
-        g[4] = '....SS..SHHHHHHHSS..';
-    } else if (st === 2) {
-        g[0] = '.........HHHH.......';
-        g[1] = '........HHhhHH......';
-        g[2] = '....HHhHHHHHHHHhHH..';
-    } else if (st === 3) {
-        for (let r = 4; r <= 15; r++) {
-            const a = g[r].split('');
-            a[3] = 'H'; a[16] = 'H';
-            g[r] = a.join('');
+    if (st !== 4) {
+        px(headX - 8, headY + 1, ink, 16, 6);
+        px(headX - 7, headY + 2, hair, 14, 4);
+        if (st === 0) {
+            // Mái ngang
+            px(headX - 7, headY + 5, hair, 14, 2);
+            px(headX - 5, headY + 2, hairHi, 4, 2);
+            px(headX + 2, headY + 2, hairHi, 3, 2);
+        } else if (st === 1) {
+            // Rẽ ngôi lệch (giống mẫu)
+            px(headX - 6, headY + 2, hairHi, 5, 2);
+            px(headX + 1, headY + 3, hairHi, 4, 2);
+            px(headX - 6, headY + 5, hair, 6, 2);
+            px(headX + 1, headY + 5, hair, 6, 1);
+        } else if (st === 2) {
+            // Búi đỉnh
+            px(headX - 3, headY - 2, ink, 6, 4);
+            px(headX - 2, headY - 1, hairHi, 4, 2);
+            px(headX - 7, headY + 5, hair, 14, 1);
+        } else if (st === 3) {
+            // Tóc dài hai bên
+            px(headX - 9, headY + 4, ink, 3, 24);
+            px(headX - 8, headY + 5, hair, 2, 22);
+            px(headX + 6, headY + 4, ink, 3, 24);
+            px(headX + 7, headY + 5, hair, 2, 22);
         }
-    } else if (st === 4) {
-        g[0] = '.......SSSSSSSS.....';
-        g[1] = '.....SSSSSSSSSSSS...';
-        g[2] = '....SSSSSSSSSSSSSS..';
-        g[3] = '....SSSSSSSSSSSSSS..';
+    } else {
+        // Đầu trọc có ánh sáng nhẹ trên trán
+        px(headX - 5, headY + 4, '#ffffff', 3, 1);
     }
 
-    if (isFemale && st !== 4) {
-        for (let r = 5; r <= 8; r++) {
-            const a = g[r].split('');
-            a[3] = (r % 2 === 0) ? 'H' : 'h';
-            a[16] = (r % 2 === 0) ? 'H' : 'h';
-            g[r] = a.join('');
+    // Tóc mái / lọn tóc cho nữ
+    if (c.gender === 'female' && st !== 4) {
+        px(headX - 8, headY + 6, ink, 2, 11);
+        px(headX - 8, headY + 7, hair, 1, 9);
+        px(headX + 6, headY + 6, ink, 2, 11);
+        px(headX + 7, headY + 7, hair, 1, 9);
+        if (!isMed) {
+            // Búi/đuôi tóc lệch bên phải như ảnh nữ
+            px(headX + 7, headY + 14, ink, 5, 7);
+            px(headX + 8, headY + 15, hair, 3, 5);
         }
     }
 
-    if (pose === 1) {
-        g[18] = '.......PPPP..PP.....';
-        g[19] = '.......PPP...PP.....';
-        g[20] = '.......PPP...PP.....';
-        g[21] = '.......PPP...PP.....';
-        g[22] = '.......FFF....FF....';
-        g[23] = '.......FFF....FF....';
-    } else if (pose === 2) {
-        g[18] = '.......PP..PPPP.....';
-        g[19] = '.......PP...PPP.....';
-        g[20] = '.......PP...PPP.....';
-        g[21] = '.......PP...PPP.....';
-        g[22] = '......FF....FFF.....';
-        g[23] = '......FF....FFF.....';
-    } else if (isMed) {
-        return pad20(g.slice(0, 13).concat([
-            '....TTTCCCCCCCTT....',
-            '...TTT.CCCCCCCC.TTT.',
-            '....PPPPPPPPPPPPPP..',
-            '...PPPPPPPPPPPPPPPP.',
-            '....FFFFFFFFFFFFFF..'
-        ]));
+    // Lông mày
+    px(headX - 6, headY + 8, ink, 4, 1);
+    px(headX + 2, headY + 8, ink, 4, 1);
+
+    // Mắt (mở khi đứng/đi, nhắm khi ngồi thiền)
+    if (isMed) {
+        px(headX - 6, headY + 10, ink, 4, 1);
+        px(headX + 2, headY + 10, ink, 4, 1);
+    } else {
+        px(headX - 6, headY + 10, '#ffffff', 4, 2);
+        px(headX - 5, headY + 10, ink, 2, 2);
+        px(headX + 2, headY + 10, '#ffffff', 4, 2);
+        px(headX + 3, headY + 10, ink, 2, 2);
     }
 
-    return pad20(g);
+    // Sống mũi & miệng
+    px(headX, headY + 12, skinShadow, 1, 2);
+    px(headX - 2, headY + 15, '#c96a6a', 4, 1);
+
+    // Cổ & thân áo
+    const bodyY = headY + 18;
+    px(headX - 3, bodyY - 1, skinShadow, 6, 2);
+
+    if (!isMed) {
+        // Tư thế đứng / bước đi
+        const legShift = (stepFrame === 1) ? 2 : (stepFrame === 2 ? -2 : 0);
+
+        // Áo sơ mi + gile
+        px(headX - 8, bodyY + 1, ink, 16, 13);
+        px(headX - 7, bodyY + 2, out.shirt, 14, 11);
+        // Gile hai bên
+        px(headX - 8, bodyY + 2, ink, 5, 11);
+        px(headX - 7, bodyY + 2, out.vest, 3, 11);
+        px(headX + 3, bodyY + 2, ink, 5, 11);
+        px(headX + 4, bodyY + 2, out.vest, 3, 11);
+
+        // Tay hai bên
+        px(headX - 11, bodyY + 2, ink, 3, 11);
+        px(headX - 10, bodyY + 3, out.shirt, 2, 7);
+        px(headX - 10, bodyY + 10, skin, 2, 3);
+
+        px(headX + 8, bodyY + 2, ink, 3, 11);
+        px(headX + 8, bodyY + 3, out.shirt, 2, 7);
+        px(headX + 8, bodyY + 10, skin, 2, 3);
+
+        if (c.gender === 'female') {
+            // Váy xếp ly
+            px(headX - 8, bodyY + 14, ink, 16, 9);
+            px(headX - 7, bodyY + 15, out.skirt, 14, 7);
+            px(headX - 3, bodyY + 15, '#2b3d30', 1, 7);
+            px(headX + 2, bodyY + 15, '#2b3d30', 1, 7);
+            // Chân trái & phải
+            px(headX - 6, bodyY + 23, ink, 4, 8 + legShift);
+            px(headX - 5, bodyY + 23, skin, 2, 7 + legShift);
+            px(headX + 2, bodyY + 23, ink, 4, 8 - legShift);
+            px(headX + 3, bodyY + 23, skin, 2, 7 - legShift);
+            // Giày
+            px(headX - 7, bodyY + 30 + legShift, ink, 5, 3);
+            px(headX - 6, bodyY + 31 + legShift, out.vest, 3, 1);
+            px(headX + 2, bodyY + 30 - legShift, ink, 5, 3);
+            px(headX + 3, bodyY + 31 - legShift, out.vest, 3, 1);
+        } else {
+            // Quần dài + giày
+            px(headX - 7, bodyY + 14, ink, 14, 17);
+            px(headX - 6, bodyY + 15, out.pants, 5, 15);
+            px(headX + 1, bodyY + 15, out.pants, 5, 15);
+            px(headX - 7, bodyY + 30 + legShift, ink, 6, 3);
+            px(headX - 6, bodyY + 31 + legShift, out.vest, 4, 1);
+            px(headX + 1, bodyY + 30 - legShift, ink, 6, 3);
+            px(headX + 2, bodyY + 31 - legShift, out.vest, 4, 1);
+        }
+    } else {
+        // Tư thế ngồi thiền xếp bằng (giống ảnh thiền)
+        px(headX - 8, bodyY + 1, ink, 16, 11);
+        px(headX - 7, bodyY + 2, out.shirt, 14, 9);
+        px(headX - 8, bodyY + 2, ink, 5, 9);
+        px(headX - 7, bodyY + 2, out.vest, 3, 9);
+        px(headX + 3, bodyY + 2, ink, 5, 9);
+        px(headX + 4, bodyY + 2, out.vest, 3, 9);
+
+        // Hai cánh tay đưa ra đặt trên đầu gối
+        px(headX - 13, bodyY + 8, ink, 6, 4);
+        px(headX - 12, bodyY + 9, out.shirt, 4, 2);
+        px(headX - 14, bodyY + 10, skin, 3, 3);
+
+        px(headX + 7, bodyY + 8, ink, 6, 4);
+        px(headX + 8, bodyY + 9, out.shirt, 4, 2);
+        px(headX + 11, bodyY + 10, skin, 3, 3);
+
+        // Chân xếp bằng
+        px(headX - 12, bodyY + 12, ink, 24, 9);
+        px(headX - 11, bodyY + 13, out.pants, 22, 7);
+        px(headX - 4, bodyY + 16, ink, 8, 4);
+        px(headX - 3, bodyY + 17, out.pants, 6, 2);
+    }
+
+    return cv;
 }
 
 const charCache = new Map();
@@ -367,34 +411,35 @@ function getCharFrames(name, c) {
     if (charCache.has(key)) return charCache.get(key);
     if (charCache.size > 600) charCache.delete(charCache.keys().next().value);
 
-    const out = OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0];
-    const pal = {
-        S: c.skin, H: c.hairColor, h: c.hairShade, B: c.hairColor,
-        E: '#141716', W: '#ffffff', l: '#2b2420', N: '#a8644c',
-        M: '#df687a', C: out.main, T: out.trim, P: out.pants, F: '#0f1211'
-    };
+    const poses = [
+        { med: false, step: 0 },
+        { med: false, step: 1 },
+        { med: false, step: 2 },
+        { med: true,  step: 0 }
+    ];
 
-    const frames = [0, 1, 2, 3].map(pose => {
-        const spr = bakePixelMatrix(buildCharGrid20x24(c, pose), pal, 3, true);
+    const frames = poses.map((p, idx) => {
+        const spr = createDetailedPortraitCanvas(c, p.med, p.step);
         const cv = document.createElement('canvas');
         cv.width = 144;
-        cv.height = 104;
+        cv.height = 132;
         const cx = cv.getContext('2d');
         cx.imageSmoothingEnabled = false;
 
         cx.fillStyle = 'rgba(0,0,0,0.4)';
         cx.beginPath();
-        cx.ellipse(72, 86, pose === 3 ? 22 : 15, 5, 0, 0, Math.PI * 2);
+        cx.ellipse(72, 118, p.med ? 26 : 16, 5, 0, 0, Math.PI * 2);
         cx.fill();
 
-        const topY = Math.round(86 - spr.height + ((pose === 1 || pose === 2) ? -2 : 0));
+        const bob = (idx === 1 || idx === 2) ? -2 : 0;
+        const topY = Math.round(118 - spr.height + bob);
         cx.drawImage(spr, Math.round(72 - spr.width / 2), topY);
 
         if (name) {
             cx.font = 'bold 10px "Courier New", monospace';
             cx.textAlign = 'center';
             cx.fillStyle = '#ffeb3b';
-            cx.fillText(name, 72, Math.max(12, topY - 6));
+            cx.fillText(name, 72, Math.max(12, topY - 5));
         }
         return cv;
     });
@@ -404,24 +449,41 @@ function getCharFrames(name, c) {
 }
 
 function drawHeadHalo(ctx, cx, cy, t) {
-    const r = 24 + Math.sin(t * 0.004) * 2;
+    const pulse = 0.94 + Math.sin(t * 0.004) * 0.06;
+    const rOut = 28 * pulse;
+    const rIn = 20 * pulse;
+
     ctx.strokeStyle = '#ffca28';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.arc(cx, cy, rOut, 0, Math.PI * 2);
     ctx.stroke();
+
+    ctx.strokeStyle = '#fff59d';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rIn, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2 + t * 0.0012;
+        const px = Math.round(cx + Math.cos(ang) * (rOut + 5));
+        const py = Math.round(cy + Math.sin(ang) * (rOut + 5));
+        ctx.fillStyle = (i % 2 === 0) ? '#fff59d' : '#ffb300';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+    }
 }
 
 function drawPerson(ctx, e, t) {
     const rx = Math.round(e.x), ry = Math.round(e.y);
     const frames = getCharFrames(e.name, e.cfg);
     const idx = e.med ? 3 : (e.walk > 0.01 ? (Math.sin(e.walk) >= 0 ? 1 : 2) : 0);
-    if (e.med) drawHeadHalo(ctx, rx, ry - 48, t);
-    ctx.drawImage(frames[idx], rx - 72, ry - 86);
+    if (e.med) drawHeadHalo(ctx, rx, ry - 86, t);
+    ctx.drawImage(frames[idx], rx - 72, ry - 118);
     if (e.chat) {
         ctx.font = '11px "Courier New", monospace';
         ctx.textAlign = 'center';
-        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 104;
+        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 134;
         ctx.fillStyle = '#fff';
         ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 18);
         ctx.fillStyle = '#111';
@@ -435,13 +497,8 @@ function renderPreview() {
     const px = pc.getContext('2d');
     px.imageSmoothingEnabled = false;
     px.clearRect(0, 0, pc.width, pc.height);
-    const out = OUTFIT_LIST[cfg.outfitId] || OUTFIT_LIST[0];
-    const spr = bakePixelMatrix(buildCharGrid20x24(cfg, 0), {
-        S: cfg.skin, H: cfg.hairColor, h: cfg.hairShade, B: cfg.hairColor,
-        E: '#141716', W: '#ffffff', l: '#2b2420', N: '#a8644c',
-        M: '#df687a', C: out.main, T: out.trim, P: out.pants, F: '#0f1211'
-    }, 3, true);
-    px.drawImage(spr, Math.round(38 - spr.width / 2), Math.round(43 - spr.height / 2));
+    const spr = createDetailedPortraitCanvas(cfg, false, 0);
+    px.drawImage(spr, Math.round(46 - spr.width / 2), Math.round(58 - spr.height / 2));
 }
 
 function initCreator() {
@@ -453,7 +510,7 @@ function initCreator() {
     });
     const hr = document.getElementById('hair-row');
     HAIR_LIST.forEach((h, i) => {
-        const b = document.createElement('button'); b.className = 'mini-btn' + (i === 0 ? ' active' : ''); b.textContent = h;
+        const b = document.createElement('button'); b.className = 'mini-btn' + (i === cfg.hairStyle ? ' active' : ''); b.textContent = h;
         b.onclick = () => { cfg.hairStyle = i; hr.querySelectorAll('.mini-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); renderPreview(); };
         hr.appendChild(b);
     });
@@ -473,6 +530,25 @@ function setGender(g, btn) {
     renderPreview();
 }
 
+function getRiverY(x) { return 1240 + Math.sin(x * 0.0038) * 52; }
+const LANTERNS = [
+    { x: 920, y: 630 }, { x: 1080, y: 630 }, { x: 910, y: 790 }, { x: 1090, y: 790 },
+    { x: 900, y: 1030 }, { x: 1100, y: 1030 }, { x: 920, y: 1380 }, { x: 1080, y: 1380 }
+];
+const TREES = [
+    { x: 220, y: 310, col: '#f48fb1' }, { x: 580, y: 330, col: '#f48fb1' }, { x: 1420, y: 290, col: '#f48fb1' },
+    { x: 200, y: 590, col: '#fbc02d' }, { x: 660, y: 620, col: '#fbc02d' }, { x: 1780, y: 440, col: '#fbc02d' },
+    { x: 160, y: 880, col: '#2e7d32' }, { x: 450, y: 960, col: '#2e7d32' }, { x: 1780, y: 880, col: '#2e7d32' },
+    { x: 280, y: 1520, col: '#f48fb1' }, { x: 650, y: 1560, col: '#fbc02d' }, { x: 1420, y: 1520, col: '#2e7d32' }
+];
+const FLOWERS = [];
+for (let i = 0; i < 65; i++) {
+    FLOWERS.push({ x: 80 + ((i * 313) % (MAP_W - 160)), y: 250 + ((i * 479) % (MAP_H - 290)) });
+}
+const KOI_LIST = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff'].map((col, idx) => ({
+    col, ang: idx * 1.0, rad: 38 + idx * 15, spd: 0.00018 + (idx % 3) * 0.00005
+}));
+
 const staticCanvas = document.createElement('canvas');
 staticCanvas.width = MAP_W;
 staticCanvas.height = MAP_H;
@@ -483,20 +559,109 @@ function buildMap(night) {
     if (cachedNight === night) return;
     cachedNight = night;
     const s = staticCtx;
-    s.fillStyle = night ? '#142014' : '#356e35';
-    s.fillRect(0, 0, MAP_W, MAP_H);
-    s.fillStyle = night ? '#0d1829' : '#8ec5f5';
-    s.fillRect(0, 0, MAP_W, 180);
+
+    const tile = 32;
+    for (let y = 210; y < MAP_H; y += tile) {
+        for (let x = 0; x < MAP_W; x += tile) {
+            const v = Math.sin(x * 0.0045) + Math.cos(y * 0.0045);
+            const alt = ((x / tile) + (y / tile)) % 2 === 0;
+            s.fillStyle = night
+                ? (v > 0.3 ? (alt ? '#192517' : '#152013') : (alt ? '#142916' : '#102212'))
+                : (v > 0.3 ? (alt ? '#4c6638' : '#435b31') : (alt ? '#2e7d32' : '#266e2a'));
+            s.fillRect(x, y, tile, tile);
+        }
+    }
+
+    s.fillStyle = night ? '#0d1829' : '#95cbf7';
+    s.fillRect(0, 0, MAP_W, 220);
+
+    s.fillStyle = night ? '#1b2b3d' : '#6c8e99';
+    s.beginPath();
+    s.moveTo(0, 220); s.lineTo(0, 125); s.lineTo(300, 58); s.lineTo(680, 132);
+    s.lineTo(1020, 48); s.lineTo(1420, 118); s.lineTo(1760, 56); s.lineTo(MAP_W, 125);
+    s.lineTo(MAP_W, 220); s.closePath(); s.fill();
+
     s.strokeStyle = night ? '#4a382e' : '#9e6b4b';
-    s.lineWidth = 56;
-    s.beginPath(); s.moveTo(900, 460); s.lineTo(900, 1420); s.stroke();
+    s.lineWidth = 64;
+    s.beginPath();
+    s.moveTo(1000, 590);
+    for (let y = 590; y <= 1580; y += 24) {
+        const wx = (y > 1150 && y < 1330) ? 0 : Math.sin((y - 590) * 0.008) * 26;
+        s.lineTo(1000 + wx, y);
+    }
+    s.stroke();
+
     s.fillStyle = night ? '#143f59' : '#4682be';
-    s.fillRect(0, 1020, MAP_W, 84);
+    s.beginPath();
+    s.moveTo(0, getRiverY(0) - RIVER_HALF);
+    for (let x = 0; x <= MAP_W; x += 28) s.lineTo(x, getRiverY(x) - RIVER_HALF);
+    for (let x = MAP_W; x >= 0; x -= 28) s.lineTo(x, getRiverY(x) + RIVER_HALF);
+    s.closePath(); s.fill();
+
+    const by = getRiverY(BRIDGE_X);
     s.fillStyle = night ? '#3e2723' : '#6d4c41';
-    s.fillRect(855, 1012, 90, 100);
+    s.fillRect(BRIDGE_X - 48, by - RIVER_HALF - 8, 96, RIVER_HALF * 2 + 16);
+
+    s.save();
+    s.translate(POND.x, POND.y);
+    s.fillStyle = night ? '#263228' : '#68785a';
+    s.beginPath(); s.arc(0, 0, POND.r + 8, 0, Math.PI, false); s.closePath(); s.fill();
+    s.fillStyle = night ? '#123c54' : '#3a7bb8';
+    s.beginPath(); s.arc(0, 0, POND.r, 0, Math.PI, false); s.closePath(); s.fill();
+    s.restore();
+
+    FLOWERS.forEach(f => {
+        if (Math.abs(f.y - getRiverY(f.x)) < RIVER_HALF + 16) return;
+        if (f.y >= POND.y - 10 && Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 16) return;
+        if (f.x > TEMPLE.x - 14 && f.x < TEMPLE.x + TEMPLE.w + 14 && f.y > TEMPLE.y - 14 && f.y < TEMPLE.y + TEMPLE.h + 14) return;
+        s.fillStyle = '#ea80fc'; s.fillRect(f.x - 3, f.y - 2, 6, 4);
+        s.fillStyle = '#ffea00'; s.fillRect(f.x - 1, f.y - 1, 2, 2);
+    });
+
     s.fillStyle = night ? '#4a3d31' : '#d7bfa0';
-    s.fillRect(660, 210, 480, 250);
-    s.strokeStyle = '#111'; s.lineWidth = 3; s.strokeRect(660, 210, 480, 250);
+    s.fillRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
+    s.strokeStyle = '#111'; s.lineWidth = 3;
+    s.strokeRect(TEMPLE.x, TEMPLE.y, TEMPLE.w, TEMPLE.h);
+
+    const cx = TEMPLE.x + TEMPLE.w / 2;
+    const cy = TEMPLE.y + 125;
+    s.fillStyle = '#f39c12';
+    s.fillRect(cx - 42, cy - 8, 84, 18);
+    s.fillRect(cx - 26, cy - 42, 52, 34);
+    s.fillRect(cx - 16, cy - 72, 32, 30);
+    s.fillStyle = '#1c2833';
+    s.fillRect(cx - 16, cy - 78, 32, 7);
+
+    LANTERNS.forEach(l => {
+        s.fillStyle = night ? '#ffea00' : '#78909c';
+        s.fillRect(l.x - 6, l.y - 24, 12, 12);
+        s.fillStyle = '#455a64';
+        s.fillRect(l.x - 4, l.y - 12, 8, 12);
+    });
+
+    TREES.forEach(t => {
+        s.fillStyle = 'rgba(0,0,0,0.35)';
+        s.beginPath(); s.ellipse(t.x, t.y + 4, 24, 8, 0, 0, Math.PI * 2); s.fill();
+        s.fillStyle = '#4e342e';
+        s.fillRect(t.x - 5, t.y - 18, 10, 20);
+        s.fillStyle = t.col;
+        s.beginPath(); s.arc(t.x, t.y - 32, 24, 0, Math.PI * 2); s.fill();
+    });
+}
+
+function drawPondKoi(ctx, time) {
+    ctx.save();
+    ctx.translate(POND.x, POND.y);
+    KOI_LIST.forEach((f, i) => {
+        const t = time * f.spd + f.ang;
+        const fx = Math.round(Math.cos(t) * (f.rad * 0.85));
+        const fy = Math.round(22 + Math.abs(Math.sin(t * 0.65)) * (f.rad * 0.62));
+        ctx.fillStyle = f.col;
+        ctx.fillRect(fx - 5, fy - 2, 10, 4);
+        const wag = Math.round(Math.sin(time * 0.005 + i) * 2);
+        ctx.fillRect(fx - 8, fy - 2 + wag, 3, 4);
+    });
+    ctx.restore();
 }
 
 const canvas = document.getElementById('gameCanvas');
@@ -510,7 +675,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-let myName = 'Hành Giả', myX = 900, myY = 760, tx = 900, ty = 760;
+let myName = 'Hành Giả', myX = 1000, myY = 900, tx = 1000, ty = 900;
 let isMed = false, walk = 0, chatMsg = '', chatTicks = 0;
 const keys = {};
 
@@ -646,7 +811,7 @@ function stepSim() {
         if (vx || vy) {
             const l = Math.hypot(vx, vy);
             myX = Math.max(30, Math.min(MAP_W - 30, myX + (vx / l) * spd));
-            myY = Math.max(190, Math.min(MAP_H - 30, myY + (vy / l) * spd));
+            myY = Math.max(230, Math.min(MAP_H - 30, myY + (vy / l) * spd));
             tx = myX; ty = myY; walk += 0.25;
         } else {
             const dx = tx - myX, dy = ty - myY, d = Math.hypot(dx, dy);
@@ -697,11 +862,13 @@ function loop(now) {
     const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
     if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
 
+    drawPondKoi(ctx, now);
+
     list.length = 0;
     list.push({ x: myX, y: myY, name: myName, cfg, med: isMed, walk, chat: chatMsg });
     for (const id in remotes) {
         const rp = remotes[id];
-        if (rp.x >= left - 72 && rp.x <= right + 72 && rp.y >= top - 90 && rp.y <= bottom + 72) {
+        if (rp.x >= left - 72 && rp.x <= right + 72 && rp.y >= top - 120 && rp.y <= bottom + 72) {
             list.push(rp);
             if (list.length >= MAX_RENDER) break;
         }
