@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Thiền Viện Tối Giản - V7.2</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="css/style.css?v=7.2">
+</head>
+<body>
+    <div id="ui-tooltip"></div>
+    <div id="game-frame">
+        <div id="hud-mini">
+            <div id="hud-clock" style="color:#f4d03f;font-weight:bold;">00:00</div>
+            <div id="hud-online" style="color:#81c784;">● 1</div>
+            <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
+        </div>
+        <div id="icon-bar-top">
+            <button id="btn-meditate" class="icon-btn" data-tip="Thiền [Space]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMeditate()">🧘</button>
+            <button id="btn-music" class="icon-btn muted" data-tip="Nhạc [M]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMusic()">🎵</button>
+        </div>
+
+        <div id="login-screen">
+            <div id="login-box">
+                <h2 class="title-txt">THIỀN VIỆN V7.2</h2>
+                <div class="creator-row">
+                    <div class="preview-box">
+                        <canvas id="previewCanvas" width="76" height="86"></canvas>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <span class="opt-label">Giới tính</span>
+                        <div class="btn-row" id="gender-row">
+                            <button class="mini-btn active" onclick="setGender('male', this)">Nam</button>
+                            <button class="mini-btn" onclick="setGender('female', this)">Nữ</button>
+                        </div>
+                        <span class="opt-label">Da</span>
+                        <div class="btn-row" id="skin-row"></div>
+                    </div>
+                </div>
+                <span class="opt-label">Kiểu tóc</span>
+                <div class="btn-row" id="hair-row"></div>
+                <span class="opt-label">Áo</span>
+                <div class="btn-row" id="outfit-row"></div>
+                <span class="opt-label">Tên</span>
+                <input type="text" id="name-input" maxlength="14" value="Hành Giả">
+                <button class="go-btn" onclick="enterGame()">VÀO NGAY</button>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="chat-dock">
+            <input type="text" id="chat-input" maxlength="50" placeholder="Chat..." onkeydown="onChatKey(event)">
+            <button class="icon-btn" data-tip="Gửi [Enter]"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="sendChat()">💬</button>
+        </div>
+    </div>
+
+    <script src="js/config.js?v=7.2"></script>
+    <script src="js/audio.js?v=7.2"></script>
+    <script src="js/character.js?v=7.2"></script>
+    <script src="js/map.js?v=7.2"></script>
+    <script src="js/net.js?v=7.2"></script>
+    <script src="js/main.js?v=7.2"></script>
+</body>
+</html>
