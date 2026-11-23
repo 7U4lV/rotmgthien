@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản - V8.0 Pixel</title>
+    <title>ROTMGTHIEN - Thiền Viện Vipassana & Ba La Mật</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -35,26 +35,48 @@
             position: absolute; top: 8px; left: 8px; z-index: 15;
             background: rgba(10,14,10,0.78); border: 1px solid rgba(255,255,255,0.16);
             border-radius: 6px; padding: 5px 8px; font-size: 10px; line-height: 1.4;
-            pointer-events: none;
+            pointer-events: none; max-width: 195px;
         }
         #icon-bar-top {
             position: absolute; top: 8px; right: 8px; z-index: 20;
-            display: flex; gap: 6px;
+            display: flex; gap: 5px;
         }
         .icon-btn {
-            width: 34px; height: 34px; border-radius: 8px;
+            width: 32px; height: 32px; border-radius: 8px;
             background: rgba(18,24,18,0.88); border: 1px solid rgba(244,208,63,0.65);
-            color: #f4d03f; font-size: 13px; cursor: pointer;
+            color: #f4d03f; font-size: 12px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
         .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
         .icon-btn.muted { opacity: 0.6; color: #bbb; border-color: rgba(255,255,255,0.2); }
 
-        /* Bảng Test nhanh gọn nhẹ */
+        /* Ngăn kéo Tu Tập: Vipassana, Ba La Mật, Quest & Thiền Viện Myanmar */
+        #dharma-drawer {
+            position: absolute; top: 46px; left: 8px; right: 8px; z-index: 26;
+            max-height: 58%; display: none; flex-direction: column; gap: 6px;
+            background: rgba(10, 14, 10, 0.94); border: 1px solid #f4d03f;
+            border-radius: 9px; padding: 9px; font-size: 11px;
+            overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+        }
+        .drawer-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+        .d-tab {
+            flex: 1; min-width: 60px; padding: 5px 4px; border-radius: 5px;
+            background: #20291f; border: 1px solid #485844; color: #d6dfd2;
+            font-family: inherit; font-size: 10px; cursor: pointer; text-align: center;
+        }
+        .d-tab.active { background: #d4af37; color: #111; font-weight: bold; }
+        .card-box {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 6px; padding: 7px; line-height: 1.4;
+        }
+        .card-title { color: #ffe082; font-weight: bold; margin-bottom: 3px; }
+        .ref-link { color: #81c784; text-decoration: underline; font-size: 10px; }
+
+        /* Bảng Test nhanh */
         #test-panel {
-            position: absolute; top: 48px; right: 8px; z-index: 25;
-            width: 196px; display: none; flex-direction: column; gap: 4px;
-            background: rgba(12, 16, 12, 0.92); border: 1px solid #f4d03f;
+            position: absolute; top: 46px; right: 8px; z-index: 27;
+            width: 204px; display: none; flex-direction: column; gap: 4px;
+            background: rgba(12, 16, 12, 0.94); border: 1px solid #f4d03f;
             border-radius: 8px; padding: 7px; font-size: 10px;
         }
         .test-title { color: #f4d03f; font-weight: bold; margin-bottom: 2px; }
@@ -86,7 +108,7 @@
             background: rgba(0, 0, 0, 0.28); border-radius: 4px; word-break: break-word;
             transition: opacity 0.4s;
         }
-        .chat-item.fading { opacity: 0.22; }
+        .chat-item.fading { opacity: 0.25; }
         .chat-input-row { display: flex; gap: 6px; align-items: center; }
         #chat-input {
             flex: 1; min-width: 0; background: rgba(12, 16, 12, 0.72); border: 1px solid #485644;
@@ -136,21 +158,40 @@
     <div id="game-frame">
         <div id="hud-mini">
             <div id="hud-clock" style="color:#f4d03f;font-weight:bold;">00:00</div>
+            <div id="hud-zone" style="color:#ffe082;">Mahasi · Chánh Niệm</div>
             <div id="hud-online" style="color:#81c784;">● 1</div>
             <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
-            <div id="hud-status" style="color:#ffd54f;"></div>
+            <div id="hud-rank" style="color:#ffcc80;">Cảnh giới: Sơ Hành Giả</div>
         </div>
 
         <div id="icon-bar-top">
             <button id="btn-meditate" class="icon-btn" data-tip="Thiền [Space]"
                 onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMeditate()">🧘</button>
+            <button id="btn-dharma" class="icon-btn" data-tip="Vipassana & Quest"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleDharmaDrawer()">📜</button>
             <button id="btn-music" class="icon-btn muted" data-tip="Nhạc [M]"
                 onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMusic()">🎵</button>
             <button id="btn-test" class="icon-btn" data-tip="Test nhanh"
                 onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleTestPanel()">Test</button>
         </div>
 
-        <div id="test-panel">
+        <div id="dharma-drawer"
+            onpointerdown="event.stopPropagation()"
+            ontouchstart="event.stopPropagation()"
+            ontouchmove="event.stopPropagation()">
+            <div class="drawer-tabs">
+                <button class="d-tab active" id="dtab-vipassana" onclick="switchDharmaTab('vipassana')">Vipassana</button>
+                <button class="d-tab" id="dtab-parami" onclick="switchDharmaTab('parami')">Ba La Mật</button>
+                <button class="d-tab" id="dtab-quest" onclick="switchDharmaTab('quest')">Quest</button>
+                <button class="d-tab" id="dtab-myanmar" onclick="switchDharmaTab('myanmar')">Myanmar</button>
+            </div>
+            <div id="dharma-content"></div>
+        </div>
+
+        <div id="test-panel"
+            onpointerdown="event.stopPropagation()"
+            ontouchstart="event.stopPropagation()"
+            ontouchmove="event.stopPropagation()">
             <div class="test-title">MỐC THIỀN (PHÚT)</div>
             <div class="test-grid">
                 <button class="t-btn" onclick="setTestMedMinutes(0)">0p</button>
@@ -173,7 +214,7 @@
 
         <div id="login-screen">
             <div id="login-box">
-                <h2 class="title-txt">THIỀN VIỆN V8.0</h2>
+                <h2 class="title-txt">ROTMGTHIEN · THIỀN VIỆN</h2>
                 <div class="creator-row">
                     <div class="preview-box">
                         <canvas id="previewCanvas" width="92" height="116"></canvas>
@@ -194,7 +235,7 @@
                 <div class="btn-row" id="outfit-row"></div>
                 <span class="opt-label">Tên</span>
                 <input type="text" id="name-input" maxlength="14" value="Hành Giả">
-                <button class="go-btn" onclick="enterGame()">VÀO NGAY</button>
+                <button class="go-btn" onclick="enterGame()">VÀO THIỀN VIỆN</button>
             </div>
         </div>
 
@@ -205,7 +246,7 @@
             ontouchstart="event.stopPropagation()"
             ontouchmove="event.stopPropagation()">
             <div id="chat-header">
-                <span>Nhật ký thiền viện (60s)</span>
+                <span>Pháp đàm & Chánh niệm (60s)</span>
                 <button id="btn-chat-expand" class="mini-btn" onclick="toggleChatExpand()" title="Mở rộng / Thu gọn">▲</button>
             </div>
             <div id="chat-log"
@@ -213,7 +254,7 @@
                 ontouchstart="event.stopPropagation()"
                 ontouchmove="event.stopPropagation()"></div>
             <div class="chat-input-row">
-                <input type="text" id="chat-input" maxlength="55" placeholder="Chat..." onkeydown="onChatKey(event)">
+                <input type="text" id="chat-input" maxlength="60" placeholder="Chia sẻ quán chiếu / Mettā..." onkeydown="onChatKey(event)">
                 <button class="icon-btn" data-tip="Gửi [Enter]"
                     onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="sendChat()">💬</button>
             </div>
@@ -221,7 +262,7 @@
     </div>
 
 <script>
-// --- CẤU HÌNH & TỈ LỆ MAP (~70% diện tích cũ: 1400 x 1190) ---
+// --- 1. CẤU HÌNH BẢN ĐỒ (~70% DIỆN TÍCH CŨ: 1400 x 1190) & KHU THIỀN VIỆN MYANMAR ---
 const SKIN_LIST = ['#f2a679', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
 const HAIR_LIST = ['Mái Ngang', 'Rẽ Ngôi', 'Búi Đỉnh', 'Tóc Dài', 'Đầu Trọc'];
 const OUTFIT_LIST = [
@@ -231,17 +272,25 @@ const OUTFIT_LIST = [
     { name: 'Áo Hồng', shirt: '#d9829b', vest: '#7a3e52', pants: '#374151', skirt: '#5c3d4e' }
 ];
 
+const ZONES = [
+    { id: 0, name: 'Mahasi · Chánh Niệm',      groundDay: '#496b38', groundNight: '#152215', bodhiTint: '#66bb6a', note: 'Ghi nhận phồng/xẹp & bước chân tỉnh giác.' },
+    { id: 1, name: 'Mogok · Quán Nhân Quả',     groundDay: '#4f653c', groundNight: '#172018', bodhiTint: '#81c784', note: 'Thấy rõ vô thường - khổ - vô ngã qua cảm thọ.' },
+    { id: 2, name: 'Pa-Auk · Định & Minh Sát',  groundDay: '#3d6842', groundNight: '#12241c', bodhiTint: '#4db6ac', note: 'An trú hơi thở (Ānāpānasati) phát sinh định tĩnh.' },
+    { id: 3, name: 'Shwe Oo Min · Tĩnh Lặng',   groundDay: '#55693a', groundNight: '#182114', bodhiTint: '#aed581', note: 'Buông xả căng thẳng, trở về sự biết đơn thuần.' }
+];
+
 const MAP_W = 1400;
 const MAP_H = 1190;
 const BODHI = { x: 700, y: 315, r: 96 };
 const GATE = { x: 700, y: 635, w: 92, h: 64 };
 const POND = { x: 1030, y: 740, r: 118 };
-const ROOM_ID = 'thienvien_v80_room';
+const ROOM_ID = 'thienvien_v81_room';
 const MAX_CONNS = 24;
 const MAX_RENDER = 100;
 const IDLE_FRAME_MS = 1000 / 30;
 const CHAT_TTL_MS = 60000;
 
+let currentZoneId = 0;
 let cfg = {
     gender: 'male',
     skin: SKIN_LIST[0],
@@ -251,12 +300,102 @@ let cfg = {
     outfitId: 0
 };
 
-// Trạng thái test nhanh
+// --- 2. HỆ THỐNG TU TẬP VIPASSANA, 10 BA LA MẬT & QUEST (LƯU LOCALSTORAGE) ---
+const PARAMIS = [
+    { key: 'dana',       name: 'Bố thí (Dāna)',        desc: 'Cúng dường khất thực hoặc chia sẻ pháp đàm.' },
+    { key: 'sila',       name: 'Trì giới (Sīla)',       desc: 'Giữ tâm trong sáng, lời nói hòa ái.' },
+    { key: 'nekkhamma',  name: 'Ly tham (Nekkhamma)',   desc: 'Ngồi thiền tĩnh tại, rời xa phiền nhiễu.' },
+    { key: 'panna',      name: 'Trí tuệ (Paññā)',      desc: 'Đọc giáo lý Vipassana & quán chiếu thực tại.' },
+    { key: 'viriya',     name: 'Tinh tấn (Vīriya)',     desc: 'Duy trì thực hành đều đặn mỗi ngày.' },
+    { key: 'khanti',     name: 'Nhẫn nhục (Khanti)',    desc: 'Kiên nhẫn qua các mốc ngồi thiền dài.' },
+    { key: 'sacca',      name: 'Chân thật (Sacca)',     desc: 'Ghi nhận đúng sự thật của thân và tâm.' },
+    { key: 'adhitthana', name: 'Quyết tâm (Adhiṭṭhāna)',desc: 'Hoàn thành các bài tập quest tu học.' },
+    { key: 'metta',      name: 'Từ (Mettā)',            desc: 'Gửi lời chúc bình an trong khung chat.' },
+    { key: 'upekkha',    name: 'Xả (Upekkhā)',          desc: 'Quân bình trước mọi biến đổi của cảnh.' }
+];
+
+const VIPASSANA_LESSONS = [
+    {
+        title: 'Tứ Niệm Xứ (Satipatthāna)',
+        summary: 'Quán thân, quán thọ, quán tâm, quán pháp một cách khách quan, không chạy theo ưa/ghét.',
+        sourceLabel: 'Access to Insight · Satipatthana Sutta',
+        url: 'https://www.accesstoinsight.org/tipitaka/mn/mn.010.nysa.html'
+    },
+    {
+        title: 'Quán Hơi Thở (Ānāpānasati)',
+        summary: 'Biết rõ hơi thở vào dài/ngắn, thở ra dài/ngắn; khi tâm tán loạn thì nhẹ nhàng biết là tâm tán loạn.',
+        sourceLabel: 'Access to Insight · Anapanasati Sutta',
+        url: 'https://www.accesstoinsight.org/tipitaka/mn/mn.118.than.html'
+    },
+    {
+        title: 'Ba Đặc Tướng (Anicca · Dukkha · Anattā)',
+        summary: 'Mọi hiện tượng đều vô thường, chịu chi phối của sinh-diệt và không thể nắm giữ làm của riêng.',
+        sourceLabel: 'Access to Insight · Theravada Library',
+        url: 'https://www.accesstoinsight.org/lib/authors/bodhi/waytoend.html'
+    }
+];
+
+let progress = {
+    satiXp: 0,
+    meritCount: 0,
+    chatCount: 0,
+    lessonsRead: [],
+    zonesVisited: [0],
+    paramiPoints: {}
+};
+PARAMIS.forEach(p => { progress.paramiPoints[p.key] = 0; });
+
+function loadProgress() {
+    try {
+        const raw = JSON.parse(localStorage.getItem('rotmgthien_v81_prog') || 'null');
+        if (raw) {
+            progress = Object.assign(progress, raw);
+            progress.paramiPoints = Object.assign(
+                PARAMIS.reduce((acc, p) => (acc[p.key] = 0, acc), {}),
+                raw.paramiPoints || {}
+            );
+        }
+    } catch (_) {}
+}
+function saveProgress() {
+    try { localStorage.setItem('rotmgthien_v81_prog', JSON.stringify(progress)); } catch (_) {}
+}
+function addParami(key, amount = 1) {
+    progress.paramiPoints[key] = (progress.paramiPoints[key] || 0) + amount;
+    progress.satiXp += amount * 10;
+    saveProgress();
+    updateRankHUD();
+}
+function getRankName() {
+    const xp = progress.satiXp;
+    if (xp >= 250) return 'Tuệ Giác Sơ Cấp';
+    if (xp >= 140) return 'Minh Sát Hành Giả';
+    if (xp >= 70)  return 'Định Tĩnh Hành Giả';
+    if (xp >= 25)  return 'Quán Thọ Hành Giả';
+    return 'Sơ Hành Giả';
+}
+function updateRankHUD() {
+    const el = document.getElementById('hud-rank');
+    if (el) el.textContent = `${getRankName()} · XP ${progress.satiXp}`;
+}
+
+function getQuests() {
+    const mins = Math.floor(getEffectiveMedMinutes());
+    return [
+        { id: 'q1', title: '1. An trú hơi thở (10p thiền)', done: mins >= 10 || progress.satiXp >= 10, reward: '+15 XP · Khanti & Nekkhamma' },
+        { id: 'q2', title: '2. Cúng dường Sư khất thực', done: progress.meritCount >= 1, reward: '+20 XP · Dāna' },
+        { id: 'q3', title: '3. Học 1 giáo lý Vipassana', done: progress.lessonsRead.length >= 1, reward: '+15 XP · Paññā' },
+        { id: 'q4', title: '4. Thăm 2 thiền viện Myanmar', done: progress.zonesVisited.length >= 2, reward: '+20 XP · Adhiṭṭhāna' },
+        { id: 'q5', title: '5. Gửi 2 lời pháp đàm / Mettā', done: progress.chatCount >= 2, reward: '+15 XP · Mettā & Sīla' }
+    ];
+}
+
+// --- TRẠNG THÁI TEST NHANH ---
 let testTimeMode = null; // null | 'day' | 'night'
 let testMedMinutesOverride = null; // null | number
 let testForceAlms = false;
 
-// --- TOOLTIP ---
+// --- TOOLTIP & NGĂN KÉO PHÁP HỌC ---
 const tipEl = document.getElementById('ui-tooltip');
 let tipTimer = null;
 function showTip(el) {
@@ -272,6 +411,74 @@ function showTip(el) {
 }
 function hideTip() { tipEl.style.display = 'none'; }
 
+let activeDharmaTab = 'vipassana';
+function toggleDharmaDrawer() {
+    const dr = document.getElementById('dharma-drawer');
+    const open = dr.style.display !== 'flex';
+    dr.style.display = open ? 'flex' : 'none';
+    document.getElementById('btn-dharma').classList.toggle('active', open);
+    if (open) renderDharmaContent();
+}
+function switchDharmaTab(tab) {
+    activeDharmaTab = tab;
+    ['vipassana', 'parami', 'quest', 'myanmar'].forEach(t => {
+        document.getElementById('dtab-' + t).classList.toggle('active', t === tab);
+    });
+    renderDharmaContent();
+}
+function markLessonRead(idx) {
+    if (!progress.lessonsRead.includes(idx)) {
+        progress.lessonsRead.push(idx);
+        addParami('panna', 2);
+    }
+    renderDharmaContent();
+}
+function switchZone(zId) {
+    currentZoneId = zId % ZONES.length;
+    cachedNight = null;
+    if (!progress.zonesVisited.includes(currentZoneId)) {
+        progress.zonesVisited.push(currentZoneId);
+        addParami('adhitthana', 2);
+    }
+    document.getElementById('hud-zone').textContent = ZONES[currentZoneId].name;
+    renderDharmaContent();
+}
+function renderDharmaContent() {
+    const box = document.getElementById('dharma-content');
+    if (!box) return;
+    if (activeDharmaTab === 'vipassana') {
+        box.innerHTML = VIPASSANA_LESSONS.map((l, idx) => {
+            const read = progress.lessonsRead.includes(idx);
+            return `<div class="card-box">
+                <div class="card-title">${l.title} ${read ? '✓' : ''}</div>
+                <div>${l.summary}</div>
+                <div style="margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
+                    <a class="ref-link" href="${l.url}" target="_blank" rel="noopener">${l.sourceLabel}</a>
+                    <button class="mini-btn" onclick="markLessonRead(${idx})">${read ? 'Đã quán' : 'Quán chiếu'}</button>
+                </div>
+            </div>`;
+        }).join('');
+    } else if (activeDharmaTab === 'parami') {
+        box.innerHTML = PARAMIS.map(p => `<div class="card-box">
+            <div class="card-title">${p.name} · Điểm: ${progress.paramiPoints[p.key] || 0}</div>
+            <div>${p.desc}</div>
+        </div>`).join('');
+    } else if (activeDharmaTab === 'quest') {
+        box.innerHTML = getQuests().map(q => `<div class="card-box">
+            <div class="card-title">${q.done ? '☑' : '☐'} ${q.title}</div>
+            <div style="color:#a5d6a7;">${q.reward}</div>
+        </div>`).join('');
+    } else {
+        box.innerHTML = ZONES.map(z => `<div class="card-box">
+            <div class="card-title">${z.name} ${z.id === currentZoneId ? '(Đang ở đây)' : ''}</div>
+            <div>${z.note}</div>
+            <div style="margin-top:4px;">
+                <button class="mini-btn" onclick="switchZone(${z.id})">Bước qua Tam Quan</button>
+            </div>
+        </div>`).join('');
+    }
+}
+
 function toggleTestPanel() {
     const p = document.getElementById('test-panel');
     p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
@@ -282,7 +489,8 @@ function setTestMedMinutes(mins) {
     updateStatusHUD();
 }
 function addTestOffering() {
-    meritCount++;
+    progress.meritCount++;
+    addParami('dana', 2);
     spawnCelestialBurst(myX, myY - 30);
     updateStatusHUD();
 }
@@ -340,7 +548,7 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// --- THỜI GIAN VIỆT NAM (Asia/Ho_Chi_Minh, UTC+7) ---
+// --- GIỜ VIỆT NAM (Asia/Ho_Chi_Minh, UTC+7) ---
 function getVNClock() {
     const d = new Date(Date.now() + 7 * 3600000);
     return {
@@ -385,7 +593,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, hasFruit = false, isM
     const headY = isMed ? 12 : 4;
     const headX = 21;
 
-    // Viền đầu + mặt pixel rõ nét theo ảnh mẫu
     px(headX - 8, headY + 3, ink, 16, 15);
     px(headX - 7, headY + 4, skin, 14, 13);
     px(headX - 7, headY + 14, skinShadow, 14, 3);
@@ -489,7 +696,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, hasFruit = false, isM
             px(headX + 2, bodyY + 31 - legShift, out.vest, 4, 1);
         }
 
-        // Bát khất thực cho Sư hoặc trái cây trên tay nhân vật khi đã hái
         if (isMonk) {
             px(headX - 6, bodyY + 9, ink, 12, 6);
             px(headX - 5, bodyY + 10, '#3e2723', 10, 4);
@@ -605,7 +811,7 @@ function setGender(g, btn) {
     renderPreview();
 }
 
-// --- MÔI TRƯỜNG & BẢN ĐỒ TĨNH (OFFSCREEN CANVAS) ---
+// --- 3. BẢN ĐỒ TĨNH (OFFSCREEN CANVAS): BỒ ĐỀ, NẤM KHỔNG LỒ, BỤI CỎ, HOA, BỂ CÁ + ĐÁ CUỘI, TAM QUAN ---
 const MUSHROOMS = [
     { x: 170, y: 390, cap: '#e53935', spot: '#fffde7' },
     { x: 1230, y: 410, cap: '#8e24aa', spot: '#f3e5f5' },
@@ -620,8 +826,7 @@ const PIXEL_FLOWERS = [];
 for (let i = 0; i < 48; i++) {
     const fx = 65 + ((i * 257) % (MAP_W - 130));
     const fy = 215 + ((i * 397) % (MAP_H - 255));
-    const distPond = Math.hypot(fx - POND.x, fy - POND.y);
-    if (distPond > POND.r + 22) {
+    if (Math.hypot(fx - POND.x, fy - POND.y) > POND.r + 22) {
         PIXEL_FLOWERS.push({ x: fx, y: fy, c: (i % 3 === 0) ? '#f48fb1' : ((i % 3 === 1) ? '#ffeb3b' : '#90caf9') });
     }
 }
@@ -654,17 +859,14 @@ function drawPixelFlower(s, x, y, petalCol) {
 }
 
 function drawGiantMushroom(s, m) {
-    // Cao hơn người (~84px)
     s.fillStyle = 'rgba(0,0,0,0.34)';
     s.beginPath(); s.ellipse(m.x, m.y + 4, 26, 7, 0, 0, Math.PI * 2); s.fill();
 
-    // Thân nấm
     s.fillStyle = '#141518';
     s.fillRect(m.x - 11, m.y - 44, 22, 46);
     s.fillStyle = '#f5ebe0';
     s.fillRect(m.x - 9, m.y - 42, 18, 42);
 
-    // Mũ nấm khổng lồ
     s.fillStyle = '#141518';
     s.beginPath(); s.arc(m.x, m.y - 48, 34, Math.PI, 0); s.lineTo(m.x + 34, m.y - 42); s.lineTo(m.x - 34, m.y - 42); s.closePath(); s.fill();
 
@@ -677,8 +879,7 @@ function drawGiantMushroom(s, m) {
     s.fillRect(m.x + 12, m.y - 60, 7, 6);
 }
 
-function drawBodhiTree(s, night) {
-    // Ánh sáng dịu tỏa quanh gốc & tán cây Bồ Đề trung tâm
+function drawBodhiTree(s, night, zone) {
     const aura = s.createRadialGradient(BODHI.x, BODHI.y - 35, 16, BODHI.x, BODHI.y - 25, 155);
     aura.addColorStop(0, night ? 'rgba(255, 224, 130, 0.26)' : 'rgba(255, 245, 157, 0.34)');
     aura.addColorStop(1, 'rgba(255, 224, 130, 0)');
@@ -688,25 +889,23 @@ function drawBodhiTree(s, night) {
     s.fillStyle = 'rgba(0,0,0,0.38)';
     s.beginPath(); s.ellipse(BODHI.x, BODHI.y + 8, 62, 14, 0, 0, Math.PI * 2); s.fill();
 
-    // Thân Bồ Đề to
     s.fillStyle = '#141518';
     s.fillRect(BODHI.x - 20, BODHI.y - 62, 40, 70);
     s.fillStyle = '#5d4037';
     s.fillRect(BODHI.x - 17, BODHI.y - 59, 34, 64);
 
-    // Tán rộng pixel
     s.fillStyle = '#141518';
     s.beginPath(); s.arc(BODHI.x, BODHI.y - 84, 78, 0, Math.PI * 2); s.fill();
-    s.fillStyle = night ? '#1f4e2b' : '#388e3c';
+    s.fillStyle = night ? '#1f4e2b' : '#2e7d32';
     s.beginPath(); s.arc(BODHI.x, BODHI.y - 84, 74, 0, Math.PI * 2); s.fill();
-    s.fillStyle = night ? '#2e6f3b' : '#66bb6a';
+    s.fillStyle = zone.bodhiTint;
     s.beginPath(); s.arc(BODHI.x - 22, BODHI.y - 96, 36, 0, Math.PI * 2); s.fill();
     s.beginPath(); s.arc(BODHI.x + 24, BODHI.y - 90, 32, 0, Math.PI * 2); s.fill();
 }
 
 function drawTamQuanGate(s, night) {
     const gx = GATE.x, gy = GATE.y;
-    s.fillStyle = 'rgba(255, 213, 79, 0.16)';
+    s.fillStyle = 'rgba(255, 213, 79, 0.18)';
     s.fillRect(gx - 56, gy - 46, 112, 64);
 
     s.fillStyle = '#141518';
@@ -721,7 +920,6 @@ function drawTamQuanGate(s, night) {
     s.fillRect(gx - 16, gy - 24, 5, 30);
     s.fillRect(gx + 11, gy - 24, 5, 30);
 
-    // Mái Tam Quan
     s.fillStyle = '#141518';
     s.fillRect(gx - 50, gy - 44, 100, 12);
     s.fillStyle = night ? '#c68b2c' : '#f4b41a';
@@ -731,22 +929,19 @@ function drawTamQuanGate(s, night) {
 function buildMap(night) {
     if (cachedNight === night) return;
     cachedNight = night;
+    const zone = ZONES[currentZoneId] || ZONES[0];
     const s = staticCtx;
     s.imageSmoothingEnabled = false;
 
     const tile = 28;
     for (let y = 175; y < MAP_H; y += tile) {
         for (let x = 0; x < MAP_W; x += tile) {
-            const v = Math.sin(x * 0.006) + Math.cos(y * 0.006);
             const alt = ((x / tile) + (y / tile)) % 2 === 0;
-            s.fillStyle = night
-                ? (v > 0.25 ? (alt ? '#172316' : '#131e12') : (alt ? '#122615' : '#0e1f11'))
-                : (v > 0.25 ? (alt ? '#55723c' : '#4a6533') : (alt ? '#388e3c' : '#2e7d32'));
+            s.fillStyle = night ? (alt ? zone.groundNight : '#101b10') : (alt ? zone.groundDay : '#38761d');
             s.fillRect(x, y, tile, tile);
         }
     }
 
-    // Bầu trời & dãy núi trùng điệp ôm sát mép trên
     s.fillStyle = night ? '#0b1424' : '#8ec5f8';
     s.fillRect(0, 0, MAP_W, 180);
 
@@ -762,7 +957,6 @@ function buildMap(night) {
         }
     }
 
-    // Dãy núi sau & trước
     s.fillStyle = night ? '#1a2c3d' : '#5c8599';
     s.beginPath();
     s.moveTo(0, 180); s.lineTo(0, 95); s.lineTo(220, 46); s.lineTo(480, 102);
@@ -775,16 +969,13 @@ function buildMap(night) {
     s.lineTo(700, 76); s.lineTo(980, 124); s.lineTo(1240, 86); s.lineTo(MAP_W, 122);
     s.lineTo(MAP_W, 180); s.closePath(); s.fill();
 
-    // Sương mây mờ ảo vờn quanh núi
     s.fillStyle = night ? 'rgba(170, 210, 225, 0.14)' : 'rgba(255, 255, 255, 0.36)';
     s.fillRect(0, 118, MAP_W, 24);
     s.fillRect(0, 146, MAP_W, 22);
 
-    // Đường đất dẫn từ Bồ Đề xuống Cổng Tam Quan
     s.fillStyle = night ? '#4a3a2c' : '#b88b5a';
     s.fillRect(674, 345, 52, 315);
 
-    // Bể cá + đá cuội to ven bờ
     s.fillStyle = night ? '#2a352c' : '#6f7d63';
     s.beginPath(); s.arc(POND.x, POND.y, POND.r + 8, 0, Math.PI * 2); s.fill();
     s.fillStyle = night ? '#123c54' : '#3a7bb8';
@@ -797,7 +988,6 @@ function buildMap(night) {
         s.beginPath(); s.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2); s.fill();
     });
 
-    // Khóm bụi cỏ & hoa nhỏ pixel rải rác
     GRASS_CLUMPS.forEach(g => {
         s.fillStyle = '#141518';
         s.fillRect(g.x - 14, g.y - 8, 28, 12);
@@ -808,11 +998,9 @@ function buildMap(night) {
     });
 
     PIXEL_FLOWERS.forEach(f => drawPixelFlower(s, f.x, f.y, f.c));
-
-    // Cây nấm khổng lồ, Cổng Tam Quan, Cây Bồ Đề trung tâm
     MUSHROOMS.forEach(m => drawGiantMushroom(s, m));
     drawTamQuanGate(s, night);
-    drawBodhiTree(s, night);
+    drawBodhiTree(s, night, zone);
 }
 
 function drawPondKoi(ctx, time) {
@@ -830,10 +1018,10 @@ function drawPondKoi(ctx, time) {
     ctx.restore();
 }
 
-// --- OBJECT POOL CHO HẠT HIỆU ỨNG (BƯỚM, CÁNH HOA, ĐOM ĐÓM, CHIM) ---
+// --- 4. OBJECT POOL HẠT HIỆU ỨNG (BƯỚM 60S, CÁNH HOA, ĐOM ĐÓM) ---
 const pool = [];
 for (let i = 0; i < 120; i++) {
-    pool.push({ active: false, type: 'glow', x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, col: '#ffeb3b', r: 3 });
+    pool.push({ active: false, type: 'butterfly', x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, col: '#ffe082', r: 3 });
 }
 function spawnParticle(type, x, y, vx, vy, maxLife, col, r = 3) {
     for (let i = 0; i < pool.length; i++) {
@@ -847,7 +1035,6 @@ function spawnParticle(type, x, y, vx, vy, maxLife, col, r = 3) {
     return null;
 }
 
-// Bướm định kỳ mỗi 60 giây quanh các khóm bụi cỏ
 let lastButterflyWave = 0;
 function spawnButterfliesAroundGrass() {
     GRASS_CLUMPS.forEach((g, idx) => {
@@ -857,8 +1044,8 @@ function spawnButterfliesAroundGrass() {
                 'butterfly',
                 g.x + Math.cos(ang) * 16,
                 g.y + Math.sin(ang) * 12,
-                (Math.random() - 0.5) * 0.6,
                 (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.4,
                 9000,
                 (idx + k) % 2 === 0 ? '#ffe082' : '#f48fb1',
                 3
@@ -866,14 +1053,12 @@ function spawnButterfliesAroundGrass() {
         }
     });
 }
-
 function spawnCelestialBurst(x, y) {
     for (let i = 0; i < 18; i++) {
         const a = (i / 18) * Math.PI * 2;
         spawnParticle('petal', x, y, Math.cos(a) * 1.1, Math.sin(a) * 0.8 + 0.4, 2400, i % 2 === 0 ? '#f48fb1' : '#fff59d', 3);
     }
 }
-
 function stepParticles(dt, time) {
     if (time - lastButterflyWave >= 60000) {
         lastButterflyWave = time;
@@ -896,14 +1081,12 @@ function stepParticles(dt, time) {
         }
     }
 }
-
 function drawParticles(ctx, time) {
     for (let i = 0; i < pool.length; i++) {
         const p = pool[i];
         if (!p.active) continue;
-        const alpha = Math.max(0, 1 - p.life / p.maxLife);
         ctx.save();
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = Math.max(0, 1 - p.life / p.maxLife);
         if (p.type === 'butterfly') {
             const flap = Math.sin(time * 0.018 + i) > 0 ? 3 : 1;
             ctx.fillStyle = p.col;
@@ -917,7 +1100,7 @@ function drawParticles(ctx, time) {
     }
 }
 
-// --- HỆ THỐNG HÀO QUANG NGỒI THIỀN (LẤY ĐẦU LÀM TÂM, CHUYỂN CẤP THEO PHÚT) ---
+// --- 5. HÀO QUANG NGỒI THIỀN THEO MỐC PHÚT (LẤY ĐẦU LÀM TÂM) ---
 function getEffectiveMedMinutes() {
     if (testMedMinutesOverride !== null) return testMedMinutesOverride;
     if (!isMed || !medStartAt) return 0;
@@ -928,38 +1111,29 @@ function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
     if (!isMed && mins <= 0 && meritBoost <= 0) return;
 
     const pulse = 0.94 + Math.sin(time * 0.004) * 0.06;
-    const boostR = meritBoost * 4;
-    let baseR = 24 + Math.min(34, mins * 0.45) + boostR;
-    baseR *= pulse;
+    const boostR = meritBoost * 3.5;
+    let baseR = (24 + Math.min(34, mins * 0.45) + boostR) * pulse;
 
     ctx.save();
     ctx.translate(Math.round(headCx), Math.round(headCy));
 
     if (mins > 60) {
-        // Trên 60 phút: 7 màu rực rỡ + chim/bướm + hoa lá xung quanh
         const colors7 = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#3d5afe', '#d500f9'];
         colors7.forEach((col, idx) => {
-            const r = baseR + idx * 4.5;
             ctx.strokeStyle = col;
             ctx.globalAlpha = Math.max(0.18, 0.72 - idx * 0.08);
             ctx.lineWidth = 2.2;
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, baseR + idx * 4.5, 0, Math.PI * 2); ctx.stroke();
         });
-
-        // Hoa lá xung quanh chỗ ngồi đung đưa nhẹ theo gió
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.92;
         for (let i = 0; i < 6; i++) {
             const a = (i / 6) * Math.PI * 2 + time * 0.0005;
             const sway = Math.sin(time * 0.003 + i) * 3;
             const fx = Math.round(Math.cos(a) * (baseR + 12) + sway);
             const fy = Math.round(Math.sin(a) * (baseR * 0.65) + 26);
-            ctx.fillStyle = '#66bb6a';
-            ctx.fillRect(fx - 2, fy + 2, 4, 5);
-            ctx.fillStyle = '#f48fb1';
-            ctx.fillRect(fx - 3, fy - 2, 6, 4);
+            ctx.fillStyle = '#66bb6a'; ctx.fillRect(fx - 2, fy + 2, 4, 5);
+            ctx.fillStyle = '#f48fb1'; ctx.fillRect(fx - 3, fy - 2, 6, 4);
         }
-
-        // Bướm & chim nhỏ bay lượn quanh tâm
         for (let b = 0; b < 4; b++) {
             const ang = time * 0.0016 + b * 1.57;
             const bx = Math.round(Math.cos(ang) * (baseR + 18));
@@ -968,7 +1142,6 @@ function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
             ctx.fillRect(bx - 3, by - 2, 6, 3);
         }
     } else if (mins >= 60) {
-        // 60 phút: 5 màu hòa quyện, viền ngoài nhạt dần
         const colors5 = ['#ff5252', '#ffab40', '#ffff00', '#69f0ae', '#40c4ff'];
         colors5.forEach((col, idx) => {
             ctx.strokeStyle = col;
@@ -977,18 +1150,11 @@ function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
             ctx.beginPath(); ctx.arc(0, 0, baseR + idx * 4, 0, Math.PI * 2); ctx.stroke();
         });
     } else if (mins >= 50) {
-        // 50 phút: thêm viền phát sáng màu xanh bao quanh
-        ctx.strokeStyle = '#ffd54f';
-        ctx.globalAlpha = 0.65;
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffd54f'; ctx.globalAlpha = 0.65; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.stroke();
-
-        ctx.strokeStyle = '#29b6f6';
-        ctx.globalAlpha = 0.55;
-        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#29b6f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(0, 0, baseR + 7, 0, Math.PI * 2); ctx.stroke();
     } else if (mins >= 30) {
-        // 30 phút: vàng chanh pha cam, rộng hơn
         const g = ctx.createRadialGradient(0, 0, 4, 0, 0, baseR + 10);
         g.addColorStop(0, 'rgba(255, 241, 118, 0.65)');
         g.addColorStop(0.65, 'rgba(255, 167, 38, 0.35)');
@@ -996,23 +1162,20 @@ function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(0, 0, baseR + 10, 0, Math.PI * 2); ctx.fill();
     } else if (mins >= 20) {
-        // 20 phút: vàng chanh
         const g = ctx.createRadialGradient(0, 0, 4, 0, 0, baseR + 6);
         g.addColorStop(0, 'rgba(238, 255, 65, 0.58)');
         g.addColorStop(1, 'rgba(255, 238, 88, 0)');
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(0, 0, baseR + 6, 0, Math.PI * 2); ctx.fill();
     } else if (mins >= 10) {
-        // 10 phút: vàng nhẹ
         const g = ctx.createRadialGradient(0, 0, 3, 0, 0, baseR);
         g.addColorStop(0, 'rgba(255, 245, 157, 0.45)');
         g.addColorStop(1, 'rgba(255, 235, 59, 0)');
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
-    } else if (isMed || meritBoost > 0) {
-        // Mới ngồi thiền hoặc có phước báu cúng dường
+    } else {
         const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 22 + boostR);
-        g.addColorStop(0, 'rgba(255, 245, 157, 0.4)');
+        g.addColorStop(0, 'rgba(255, 245, 157, 0.42)');
         g.addColorStop(1, 'rgba(255, 213, 79, 0)');
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(0, 0, 22 + boostR, 0, Math.PI * 2); ctx.fill();
@@ -1021,10 +1184,9 @@ function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
     ctx.restore();
 }
 
-// --- SỰ KIỆN SƯ ĐI KHẤT THỰC (06:00 - 11:00 VN) & 3 CHƯ THIÊN ---
-let monk = null; // Tối đa 1 vị Sư tại một thời điểm
+// --- 6. SỰ KIỆN SƯ ĐI KHẤT THỰC (06:00 - 11:00 VN) & 3 CHƯ THIÊN ---
+let monk = null;
 let hasFruitInHand = false;
-let meritCount = 0;
 let almsCooldownUntil = 0;
 
 const FRUIT_SPOTS = [
@@ -1078,13 +1240,11 @@ function stepAlmsEvent(dt, time) {
         monk.y += (dy / dist) * monk.spd;
         monk.walk += 0.18;
     } else {
-        // Ra khỏi mép map: biến mất kèm 3 Chư Thiên
         monk = null;
         FRUIT_SPOTS.forEach(f => { f.ripe = false; });
         return;
     }
 
-    // Hái trái khi lại gần trái chín trên cây/nấm
     if (!hasFruitInHand) {
         for (let i = 0; i < FRUIT_SPOTS.length; i++) {
             const fs = FRUIT_SPOTS[i];
@@ -1097,17 +1257,16 @@ function stepAlmsEvent(dt, time) {
         }
     }
 
-    // Cúng dường khi đến gần Sư (không giới hạn số lần)
     if (hasFruitInHand && Math.hypot(myX - monk.x, myY - monk.y) < 46) {
         hasFruitInHand = false;
-        meritCount++;
+        progress.meritCount++;
+        addParami('dana', 2);
         spawnCelestialBurst(monk.x, monk.y - 45);
-        pushChatLine(myName, `Cúng dường thành tâm (+${meritCount})`);
+        pushChatLine(myName, `Cúng dường thành tâm (Phước: ${progress.meritCount})`);
         updateStatusHUD();
     }
 
-    // 3 Chư Thiên như đom đóm tung hoa rơi rồi tan biến khi có phước báu cúng dường
-    if (meritCount > 0 && Math.random() < 0.08) {
+    if (progress.meritCount > 0 && Math.random() < 0.08) {
         const c0 = monk.celestials[0];
         const cx = monk.x + Math.cos(time * 0.003 + c0.phase) * 34;
         const cy = monk.y - 54 + Math.sin(time * 0.004 + c0.phase) * 16;
@@ -1116,7 +1275,6 @@ function stepAlmsEvent(dt, time) {
 }
 
 function drawAlmsWorld(ctx, time) {
-    // Vẽ trái cây chín trên cây/nấm
     FRUIT_SPOTS.forEach(fs => {
         if (!fs.ripe) return;
         ctx.fillStyle = '#141518';
@@ -1132,8 +1290,7 @@ function drawAlmsWorld(ctx, time) {
     const fIdx = Math.sin(monk.walk) >= 0 ? 1 : 2;
     ctx.drawImage(frames[fIdx], Math.round(monk.x - 72), Math.round(monk.y - 118));
 
-    // Vẽ 3 Chư Thiên nhỏ như đom đóm phát sáng bay xung quanh
-    if (meritCount > 0) {
+    if (progress.meritCount > 0) {
         monk.celestials.forEach((cel, idx) => {
             const ang = time * 0.0025 + cel.phase + idx * 0.3;
             const gx = Math.round(monk.x + Math.cos(ang) * 34);
@@ -1146,7 +1303,7 @@ function drawAlmsWorld(ctx, time) {
     }
 }
 
-// --- KHUNG CHAT UI (40% ĐEN MỜ, LƯU 60 GIÂY, MỞ RỘNG/THU GỌN, CUỘN MƯỢT) ---
+// --- 7. KHUNG CHAT UI (40% ĐEN MỜ, LƯU 60S, MỞ RỘNG/THU GỌN, CUỘN MƯỢT) ---
 const chatLogEl = document.getElementById('chat-log');
 let chatExpanded = false;
 const chatEntries = [];
@@ -1181,7 +1338,7 @@ function renderChatLog() {
     chatLogEl.scrollTop = chatLogEl.scrollHeight;
 }
 
-// --- CANVAS & ĐIỀU KHIỂN ---
+// --- 8. CANVAS, ĐIỀU KHIỂN & MẠNG P2P ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
 function resizeCanvas() {
@@ -1213,6 +1370,7 @@ canvas.addEventListener('pointerdown', e => {
     const wx = (e.clientX - r.left) - (canvas.width / 2 - myX);
     const wy = (e.clientY - r.top) - (canvas.height / 2 - myY);
     if (Math.abs(wx - GATE.x) < GATE.w * 0.6 && Math.abs(wy - GATE.y) < GATE.h * 0.6) {
+        switchZone(currentZoneId + 1);
         gateNoticeTicks = 150;
     }
     tx = wx;
@@ -1225,7 +1383,10 @@ function toggleMeditate() {
     if (isMed) {
         tx = myX; ty = myY;
         medStartAt = Date.now();
+        addParami('nekkhamma', 1);
     } else {
+        const elapsedMins = getEffectiveMedMinutes();
+        if (elapsedMins >= 10) addParami('khanti', 1);
         medStartAt = 0;
         if (testMedMinutesOverride !== null) testMedMinutesOverride = 0;
     }
@@ -1233,13 +1394,7 @@ function toggleMeditate() {
 }
 
 function updateStatusHUD() {
-    const mins = Math.floor(getEffectiveMedMinutes());
-    const stEl = document.getElementById('hud-status');
-    const parts = [];
-    if (isMed || mins > 0) parts.push(`Thiền ${mins}p`);
-    if (meritCount > 0) parts.push(`Phước ${meritCount}`);
-    if (hasFruitInHand) parts.push('Có trái');
-    stEl.textContent = parts.join(' · ');
+    updateRankHUD();
 }
 
 function sendChat() {
@@ -1248,6 +1403,8 @@ function sendChat() {
     if (v) {
         chatMsg = v;
         chatTicks = 300;
+        progress.chatCount++;
+        addParami('metta', 1);
         pushChatLine(myName, v);
     }
     inp.value = '';
@@ -1259,10 +1416,10 @@ function enterGame() {
     myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('chat-dock').style.display = 'flex';
+    addParami('viriya', 1);
     startP2P();
 }
 
-// --- MẠNG P2P ---
 let peer = null, syncTimer = null, seq = 0;
 const conns = {}, remotes = {}, profiles = {}, seen = new Set();
 
@@ -1317,12 +1474,12 @@ function bindConn(conn) {
                     id: d.id, name: pr.n, cfg: pr.c,
                     x: d.x, y: d.y, tx: d.x, ty: d.y,
                     med: !!(d.f & 1), walk: 0, chat: d.ch || '',
-                    merit: d.mr || 0, medMins: d.mm || 0, ts: Date.now()
+                    merit: d.mr || 0, medMins: d.mm || 0, zone: d.z || 0, ts: Date.now()
                 };
                 if (!profiles[d.id] && conn.open) conn.send({ t: 'QP', target: d.id });
             } else {
                 rp.tx = d.x; rp.ty = d.y; rp.med = !!(d.f & 1);
-                rp.merit = d.mr || 0; rp.medMins = d.mm || 0;
+                rp.merit = d.mr || 0; rp.medMins = d.mm || 0; rp.zone = d.z || 0;
                 if (d.ch && d.ch !== rp.chat) pushChatLine(rp.name, d.ch);
                 rp.chat = d.ch || ''; rp.ts = Date.now();
             }
@@ -1348,7 +1505,8 @@ function startSync() {
         const pkt = {
             t: 'M', mid: `${peer.id}_${++seq}`, id: peer.id,
             x: Math.round(myX), y: Math.round(myY), f: flags,
-            ch: chatMsg, mr: meritCount, mm: Math.floor(getEffectiveMedMinutes()), h: 0
+            ch: chatMsg, mr: progress.meritCount, mm: Math.floor(getEffectiveMedMinutes()),
+            z: currentZoneId, h: 0
         };
         for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
 
@@ -1360,7 +1518,6 @@ function startSync() {
     }, 240);
 }
 
-// --- MÔ PHỎNG & VẼ ---
 function canWalkTo(nx, ny) {
     if (nx < 28 || nx > MAP_W - 28 || ny < 185 || ny > MAP_H - 28) return false;
     if (Math.hypot(nx - POND.x, ny - POND.y) < POND.r + 6) return false;
@@ -1393,6 +1550,7 @@ function stepSim() {
             }
         }
         if (Math.abs(myX - GATE.x) < GATE.w * 0.45 && Math.abs(myY - GATE.y) < GATE.h * 0.45 && gateNoticeTicks <= 0) {
+            switchZone(currentZoneId + 1);
             gateNoticeTicks = 120;
         }
     }
@@ -1470,7 +1628,6 @@ function loop(now) {
     const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
     if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
 
-    // Mây sương trôi bồng bềnh quanh núi trên mép map
     const cloudOffset = Math.round(Math.sin(now * 0.00025) * 42);
     ctx.fillStyle = night ? 'rgba(180, 220, 240, 0.16)' : 'rgba(255, 255, 255, 0.45)';
     ctx.fillRect(Math.max(0, left), 124, Math.min(MAP_W, right) - Math.max(0, left), 10);
@@ -1488,11 +1645,12 @@ function loop(now) {
         x: myX, y: myY, name: myName, cfg,
         med: isMed, walk, chat: chatMsg,
         medMins: getEffectiveMedMinutes(),
-        merit: meritCount,
+        merit: progress.meritCount,
         hasFruit: hasFruitInHand
     });
     for (const id in remotes) {
         const rp = remotes[id];
+        if ((rp.zone || 0) !== currentZoneId) continue;
         if (rp.x >= left - 72 && rp.x <= right + 72 && rp.y >= top - 120 && rp.y <= bottom + 72) {
             list.push(rp);
             if (list.length >= MAX_RENDER) break;
@@ -1507,15 +1665,17 @@ function loop(now) {
         ctx.font = 'bold 11px "Courier New", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillRect(GATE.x - 95, GATE.y - 68, 190, 20);
+        ctx.fillRect(GATE.x - 108, GATE.y - 68, 216, 20);
         ctx.fillStyle = '#ffe082';
-        ctx.fillText('Cổng Tam Quan - Đang chờ mở', GATE.x, GATE.y - 54);
+        ctx.fillText(`Tam Quan: ${ZONES[currentZoneId].name}`, GATE.x, GATE.y - 54);
     }
 
     ctx.restore();
 }
 
+loadProgress();
 initCreator();
+updateStatusHUD();
 requestAnimationFrame(loop);
 </script>
 </body>
