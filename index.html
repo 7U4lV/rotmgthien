@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiền Viện Tối Giản - V7.6</title>
+    <title>Thiền Viện Tối Giản - V8.0 Pixel</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -44,41 +44,56 @@
         .icon-btn {
             width: 34px; height: 34px; border-radius: 8px;
             background: rgba(18,24,18,0.88); border: 1px solid rgba(244,208,63,0.65);
-            color: #f4d03f; font-size: 15px; cursor: pointer;
+            color: #f4d03f; font-size: 13px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
         .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
         .icon-btn.muted { opacity: 0.6; color: #bbb; border-color: rgba(255,255,255,0.2); }
 
-        #chat-panel {
+        /* Bảng Test nhanh gọn nhẹ */
+        #test-panel {
+            position: absolute; top: 48px; right: 8px; z-index: 25;
+            width: 196px; display: none; flex-direction: column; gap: 4px;
+            background: rgba(12, 16, 12, 0.92); border: 1px solid #f4d03f;
+            border-radius: 8px; padding: 7px; font-size: 10px;
+        }
+        .test-title { color: #f4d03f; font-weight: bold; margin-bottom: 2px; }
+        .test-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+        .t-btn {
+            background: #232d21; border: 1px solid #4d5e48; color: #e8efe5;
+            border-radius: 4px; padding: 4px 2px; font-family: inherit; font-size: 9px; cursor: pointer;
+        }
+        .t-btn.active { background: #d4af37; color: #111; font-weight: bold; }
+
+        /* Khung Chat UI: nền đen mờ trong suốt 40%, cuộn cảm ứng mượt */
+        #chat-dock {
             position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
             display: none; flex-direction: column; gap: 5px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255,255,255,0.18);
-            padding: 6px; border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.18);
+            padding: 6px; border-radius: 9px;
         }
         #chat-header {
-            display: flex; justify-content: space-between; align-items: center;
-            font-size: 10px; color: #dcdcdc; padding: 0 2px;
-        }
-        #chat-toggle {
-            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
-            color: #f4d03f; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer;
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 10px; color: #dce6d8;
         }
         #chat-log {
-            max-height: 86px; overflow-y: auto; -webkit-overflow-scrolling: touch;
-            display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.3;
-            padding-right: 2px;
+            max-height: 76px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+            padding-right: 2px; touch-action: pan-y; -webkit-overflow-scrolling: touch;
         }
-        #chat-panel.collapsed #chat-log { display: none; }
-        .chat-line { word-break: break-word; color: #f5f5f5; }
-        .chat-name { color: #ffeb3b; font-weight: bold; }
-        #chat-input-row { display: flex; gap: 6px; align-items: center; }
+        #chat-log.expanded { max-height: 170px; }
+        .chat-item {
+            font-size: 11px; line-height: 1.3; padding: 2px 5px;
+            background: rgba(0, 0, 0, 0.28); border-radius: 4px; word-break: break-word;
+            transition: opacity 0.4s;
+        }
+        .chat-item.fading { opacity: 0.22; }
+        .chat-input-row { display: flex; gap: 6px; align-items: center; }
         #chat-input {
-            flex: 1; min-width: 0; background: rgba(12,16,12,0.82); border: 1px solid #485644;
+            flex: 1; min-width: 0; background: rgba(12, 16, 12, 0.72); border: 1px solid #485644;
             color: #fff; padding: 6px 8px; border-radius: 6px;
-            font-family: inherit; font-size: 12px; outline: none;
+            font-family: inherit; font-size: 12px; outline: none; user-select: text;
         }
+        #chat-input:focus { border-color: #f4d03f; }
 
         #login-screen {
             position: absolute; inset: 0; background: rgba(10,14,10,0.96);
@@ -123,20 +138,42 @@
             <div id="hud-clock" style="color:#f4d03f;font-weight:bold;">00:00</div>
             <div id="hud-online" style="color:#81c784;">● 1</div>
             <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
-            <div id="hud-status" style="color:#ffcc80;">Trái: 0 | Cúng: 0</div>
+            <div id="hud-status" style="color:#ffd54f;"></div>
         </div>
+
         <div id="icon-bar-top">
-            <button id="btn-action" class="icon-btn" data-tip="Hái / Cúng [E]"
-                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="interactAction()">🍎</button>
             <button id="btn-meditate" class="icon-btn" data-tip="Thiền [Space]"
                 onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMeditate()">🧘</button>
             <button id="btn-music" class="icon-btn muted" data-tip="Nhạc [M]"
                 onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleMusic()">🎵</button>
+            <button id="btn-test" class="icon-btn" data-tip="Test nhanh"
+                onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="toggleTestPanel()">Test</button>
+        </div>
+
+        <div id="test-panel">
+            <div class="test-title">MỐC THIỀN (PHÚT)</div>
+            <div class="test-grid">
+                <button class="t-btn" onclick="setTestMedMinutes(0)">0p</button>
+                <button class="t-btn" onclick="setTestMedMinutes(12)">10p+</button>
+                <button class="t-btn" onclick="setTestMedMinutes(22)">20p+</button>
+                <button class="t-btn" onclick="setTestMedMinutes(32)">30p+</button>
+                <button class="t-btn" onclick="setTestMedMinutes(52)">50p+</button>
+                <button class="t-btn" onclick="setTestMedMinutes(60)">60p</button>
+                <button class="t-btn" onclick="setTestMedMinutes(75)">>60p</button>
+                <button class="t-btn" onclick="addTestOffering()">+Cúng</button>
+                <button class="t-btn" onclick="resetTestOverride()">Tắt test</button>
+            </div>
+            <div class="test-title" style="margin-top:4px;">NGÀY/ĐÊM & SƯ</div>
+            <div class="test-grid">
+                <button class="t-btn" onclick="setTestTimeMode('day')">Ngày</button>
+                <button class="t-btn" onclick="setTestTimeMode('night')">Đêm</button>
+                <button class="t-btn" onclick="triggerTestAlms()">Gọi Sư</button>
+            </div>
         </div>
 
         <div id="login-screen">
             <div id="login-box">
-                <h2 class="title-txt">THIỀN VIỆN V7.6</h2>
+                <h2 class="title-txt">THIỀN VIỆN V8.0</h2>
                 <div class="creator-row">
                     <div class="preview-box">
                         <canvas id="previewCanvas" width="92" height="116"></canvas>
@@ -163,14 +200,20 @@
 
         <canvas id="gameCanvas"></canvas>
 
-        <div id="chat-panel">
+        <div id="chat-dock"
+            onpointerdown="event.stopPropagation()"
+            ontouchstart="event.stopPropagation()"
+            ontouchmove="event.stopPropagation()">
             <div id="chat-header">
-                <span>Chat (60s)</span>
-                <button id="chat-toggle" onclick="toggleChatCollapse()" title="Thu gọn / Mở rộng">▾</button>
+                <span>Nhật ký thiền viện (60s)</span>
+                <button id="btn-chat-expand" class="mini-btn" onclick="toggleChatExpand()" title="Mở rộng / Thu gọn">▲</button>
             </div>
-            <div id="chat-log"></div>
-            <div id="chat-input-row">
-                <input type="text" id="chat-input" maxlength="60" placeholder="Chat..." onkeydown="onChatKey(event)">
+            <div id="chat-log"
+                onpointerdown="event.stopPropagation()"
+                ontouchstart="event.stopPropagation()"
+                ontouchmove="event.stopPropagation()"></div>
+            <div class="chat-input-row">
+                <input type="text" id="chat-input" maxlength="55" placeholder="Chat..." onkeydown="onChatKey(event)">
                 <button class="icon-btn" data-tip="Gửi [Enter]"
                     onpointerenter="showTip(this)" onpointerleave="hideTip()" onclick="sendChat()">💬</button>
             </div>
@@ -178,6 +221,7 @@
     </div>
 
 <script>
+// --- CẤU HÌNH & TỈ LỆ MAP (~70% diện tích cũ: 1400 x 1190) ---
 const SKIN_LIST = ['#f2a679', '#ffdbac', '#e0ac69', '#c68642', '#8d5524'];
 const HAIR_LIST = ['Mái Ngang', 'Rẽ Ngôi', 'Búi Đỉnh', 'Tóc Dài', 'Đầu Trọc'];
 const OUTFIT_LIST = [
@@ -187,16 +231,16 @@ const OUTFIT_LIST = [
     { name: 'Áo Hồng', shirt: '#d9829b', vest: '#7a3e52', pants: '#374151', skirt: '#5c3d4e' }
 ];
 
-// Tỷ lệ 9:16 thu nhỏ còn ~70%
-const MAP_W = 1260;
-const MAP_H = 2240;
-const BODHI = { x: 340, y: 740 };
-const GATE  = { x: 630, y: 1120 };
-const POND  = { x: 930, y: 1560, r: 125 };
-const ROOM_ID = 'thienvien_v76_room';
-const MAX_CONNS = 20;
+const MAP_W = 1400;
+const MAP_H = 1190;
+const BODHI = { x: 700, y: 315, r: 96 };
+const GATE = { x: 700, y: 635, w: 92, h: 64 };
+const POND = { x: 1030, y: 740, r: 118 };
+const ROOM_ID = 'thienvien_v80_room';
+const MAX_CONNS = 24;
 const MAX_RENDER = 100;
-const IDLE_FRAME_MS = 1000 / 24;
+const IDLE_FRAME_MS = 1000 / 30;
+const CHAT_TTL_MS = 60000;
 
 let cfg = {
     gender: 'male',
@@ -207,6 +251,12 @@ let cfg = {
     outfitId: 0
 };
 
+// Trạng thái test nhanh
+let testTimeMode = null; // null | 'day' | 'night'
+let testMedMinutesOverride = null; // null | number
+let testForceAlms = false;
+
+// --- TOOLTIP ---
 const tipEl = document.getElementById('ui-tooltip');
 let tipTimer = null;
 function showTip(el) {
@@ -222,6 +272,37 @@ function showTip(el) {
 }
 function hideTip() { tipEl.style.display = 'none'; }
 
+function toggleTestPanel() {
+    const p = document.getElementById('test-panel');
+    p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
+}
+function setTestMedMinutes(mins) {
+    testMedMinutesOverride = mins;
+    if (!isMed && mins > 0) toggleMeditate();
+    updateStatusHUD();
+}
+function addTestOffering() {
+    meritCount++;
+    spawnCelestialBurst(myX, myY - 30);
+    updateStatusHUD();
+}
+function resetTestOverride() {
+    testTimeMode = null;
+    testMedMinutesOverride = null;
+    testForceAlms = false;
+    cachedNight = null;
+    updateStatusHUD();
+}
+function setTestTimeMode(mode) {
+    testTimeMode = mode;
+    cachedNight = null;
+}
+function triggerTestAlms() {
+    testForceAlms = true;
+    spawnAlmsMonkIfNeeded(true);
+}
+
+// --- NHẠC NGŨ CUNG NHẸ ---
 let audioCtx = null, isMusicOn = false, musicTimer = null;
 const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
 function toggleMusic() {
@@ -259,8 +340,27 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Dựng nhân vật chi tiết theo ảnh mẫu
-function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
+// --- THỜI GIAN VIỆT NAM (Asia/Ho_Chi_Minh, UTC+7) ---
+function getVNClock() {
+    const d = new Date(Date.now() + 7 * 3600000);
+    return {
+        hours: d.getUTCHours(),
+        minutes: d.getUTCMinutes(),
+        label: String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0')
+    };
+}
+function isNightTime(hours) {
+    if (testTimeMode === 'night') return true;
+    if (testTimeMode === 'day') return false;
+    return (hours >= 18 || hours < 6);
+}
+function isAlmsWindow(hours) {
+    if (testForceAlms) return true;
+    return (hours >= 6 && hours < 11);
+}
+
+// --- PIXEL ART SPRITE NHÂN VẬT & SƯ ---
+function createDetailedPortraitCanvas(c, isMed, stepFrame, hasFruit = false, isMonk = false) {
     const W = 42, H = 56, S = 2;
     const cv = document.createElement('canvas');
     cv.width = W * S;
@@ -269,12 +369,12 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
     x.imageSmoothingEnabled = false;
 
     const out = isMonk
-        ? { shirt: '#d97724', vest: '#9c4a12', pants: '#8a3e0d', skirt: '#8a3e0d' }
+        ? { shirt: '#b87333', vest: '#8c4a19', pants: '#6d3b14', skirt: '#8c4a19' }
         : (OUTFIT_LIST[c.outfitId] || OUTFIT_LIST[0]);
-    const skin = c.skin;
+    const skin = isMonk ? '#e8b48a' : c.skin;
     const skinShadow = '#c97a54';
-    const hair = c.hairColor;
-    const hairHi = c.hairShade;
+    const hair = isMonk ? skin : c.hairColor;
+    const hairHi = isMonk ? '#ffe0c2' : c.hairShade;
     const ink = '#141518';
 
     function px(gx, gy, col, gw = 1, gh = 1) {
@@ -285,6 +385,7 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
     const headY = isMed ? 12 : 4;
     const headX = 21;
 
+    // Viền đầu + mặt pixel rõ nét theo ảnh mẫu
     px(headX - 8, headY + 3, ink, 16, 15);
     px(headX - 7, headY + 4, skin, 14, 13);
     px(headX - 7, headY + 14, skinShadow, 14, 3);
@@ -332,7 +433,7 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
     px(headX - 6, headY + 8, ink, 4, 1);
     px(headX + 2, headY + 8, ink, 4, 1);
 
-    if (isMed) {
+    if (isMed || isMonk) {
         px(headX - 6, headY + 10, ink, 4, 1);
         px(headX + 2, headY + 10, ink, 4, 1);
     } else {
@@ -365,11 +466,6 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
         px(headX + 8, bodyY + 3, out.shirt, 2, 7);
         px(headX + 8, bodyY + 10, skin, 2, 3);
 
-        if (isMonk) {
-            px(headX - 4, bodyY + 11, ink, 8, 5);
-            px(headX - 3, bodyY + 12, '#37474f', 6, 3);
-        }
-
         if (!isMonk && c.gender === 'female') {
             px(headX - 8, bodyY + 14, ink, 16, 9);
             px(headX - 7, bodyY + 15, out.skirt, 14, 7);
@@ -391,6 +487,16 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
             px(headX - 6, bodyY + 31 + legShift, out.vest, 4, 1);
             px(headX + 1, bodyY + 30 - legShift, ink, 6, 3);
             px(headX + 2, bodyY + 31 - legShift, out.vest, 4, 1);
+        }
+
+        // Bát khất thực cho Sư hoặc trái cây trên tay nhân vật khi đã hái
+        if (isMonk) {
+            px(headX - 6, bodyY + 9, ink, 12, 6);
+            px(headX - 5, bodyY + 10, '#3e2723', 10, 4);
+        } else if (hasFruit) {
+            px(headX + 8, bodyY + 6, ink, 6, 6);
+            px(headX + 9, bodyY + 7, '#ff5252', 4, 4);
+            px(headX + 10, bodyY + 5, '#66bb6a', 2, 2);
         }
     } else {
         px(headX - 8, bodyY + 1, ink, 16, 11);
@@ -417,100 +523,9 @@ function createDetailedPortraitCanvas(c, isMed, stepFrame, isMonk = false) {
     return cv;
 }
 
-// Sprite nấm to (image_a84fc7.jpg), bụi cỏ (image_a85e8d.png), hoa nhỏ (image_a85b06.png), cây bồ đề (image_a85f05.png)
-function makePixelSprite(rows, pal, scale = 3) {
-    const h = rows.length, w = rows[0].length;
-    const cv = document.createElement('canvas');
-    cv.width = w * scale;
-    cv.height = h * scale;
-    const x = cv.getContext('2d');
-    x.imageSmoothingEnabled = false;
-    for (let r = 0; r < h; r++) {
-        for (let c = 0; c < w; c++) {
-            const ch = rows[r][c];
-            if (ch !== '.' && pal[ch]) {
-                x.fillStyle = pal[ch];
-                x.fillRect(c * scale, r * scale, scale, scale);
-            }
-        }
-    }
-    return cv;
-}
-
-const SPR_MUSHROOM = makePixelSprite([
-    '.....RRRRRRRR.....',
-    '...RRRRWWWWWRRR...',
-    '..RRRWWWRRRRWWWR..',
-    '.RRRRRRRRRRRRRRRR.',
-    '.RRWWWRRRRRRRRWRR.',
-    '.RRRRRRRRWWWRRRRR.',
-    '..RRRRRRRRRRRRRR..',
-    '...KKKKKKKKKKKK...',
-    '.....SSSSSSSS.....',
-    '.....SSWSSWSS.....',
-    '.....SSSSSSSS.....',
-    '......KKKKKK......'
-], { K: '#161616', R: '#e53935', W: '#ffffff', S: '#f5d0a9' }, 4);
-
-const SPR_BUSH = makePixelSprite([
-    '....GGGG....GGGG....',
-    '..GGLLLLGGGGLLLLGG..',
-    '.GGLLLLLLLLLLLLLLGG.',
-    '.GGddddLLLLLLLLddGG.',
-    '..GGGGddddddddGGGG..',
-    '...KKKKKKKKKKKKKK...'
-], { K: '#142214', G: '#2e7d32', L: '#7cb342', d: '#1b5e20' }, 3);
-
-const SPR_FLOWERS = [
-    makePixelSprite([
-        '..PPPP..',
-        '.PppppP.',
-        '..PYYP..',
-        '...GG...',
-        '..GGGG..',
-        '...GG...'
-    ], { P: '#ce93d8', p: '#f3e5f5', Y: '#ffeb3b', G: '#2e7d32' }, 2),
-    makePixelSprite([
-        '...BB...',
-        '..BBBB..',
-        '...YG...',
-        '..GGGG..',
-        '...GG...'
-    ], { B: '#1e88e5', Y: '#ffeb3b', G: '#2e7d32' }, 2),
-    makePixelSprite([
-        '...RR...',
-        '..RRRR..',
-        '...GG...',
-        '..GGGG..',
-        '...GG...'
-    ], { R: '#e53935', G: '#2e7d32' }, 2),
-    makePixelSprite([
-        '...OO...',
-        '..OOOO..',
-        '...GG...',
-        '..GGGG..',
-        '...GG...'
-    ], { O: '#fb8c00', G: '#2e7d32' }, 2)
-];
-
-const SPR_BODHI = makePixelSprite([
-    '........GGGGGGGG........',
-    '......GGLLLLLLLLGG......',
-    '....GGLLLLYYYYLLLLGG....',
-    '...GGLLLLLLLLLLLLLLGG...',
-    '..GGddddLLLLLLLLddddGG..',
-    '..GGddddddddddddddddGG..',
-    '...GGGGddddddddddddGG...',
-    '.....KKKKKKKKKKKKKK.....',
-    '.........TTTTTT.........',
-    '.........TTTTTT.........',
-    '........TTTTTTTT........',
-    '.......TTTTTTTTTT.......'
-], { K: '#151c14', G: '#2e7d32', L: '#66bb6a', Y: '#dce775', d: '#1b5e20', T: '#6d4c41' }, 6);
-
 const charCache = new Map();
-function getCharFrames(name, c, isMonk = false) {
-    const key = `${isMonk ? 'MONK' : 'USR'}|${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.outfitId}`;
+function getCharFrames(name, c, hasFruit = false, isMonk = false) {
+    const key = `${name}|${c.gender}|${c.skin}|${c.hairStyle}|${c.outfitId}|${hasFruit ? 1 : 0}|${isMonk ? 1 : 0}`;
     if (charCache.has(key)) return charCache.get(key);
     if (charCache.size > 600) charCache.delete(charCache.keys().next().value);
 
@@ -522,14 +537,14 @@ function getCharFrames(name, c, isMonk = false) {
     ];
 
     const frames = poses.map((p, idx) => {
-        const spr = createDetailedPortraitCanvas(c, p.med, p.step, isMonk);
+        const spr = createDetailedPortraitCanvas(c, p.med, p.step, hasFruit, isMonk);
         const cv = document.createElement('canvas');
         cv.width = 144;
         cv.height = 132;
         const cx = cv.getContext('2d');
         cx.imageSmoothingEnabled = false;
 
-        cx.fillStyle = 'rgba(0,0,0,0.4)';
+        cx.fillStyle = 'rgba(0,0,0,0.38)';
         cx.beginPath();
         cx.ellipse(72, 118, p.med ? 26 : 16, 5, 0, 0, Math.PI * 2);
         cx.fill();
@@ -551,137 +566,13 @@ function getCharFrames(name, c, isMonk = false) {
     return frames;
 }
 
-// Hào quang thiền phát sáng từ đầu làm trung tâm, biến đổi theo mốc phút ngồi thiền + số lần cúng dường
-function drawMeditationAura(ctx, cx, cy, medMinutes, offeringCount, t) {
-    const offerBoost = Math.min(offeringCount * 4, 24);
-    const pulse = 0.95 + Math.sin(t * 0.004) * 0.05;
-
-    let baseR = 24;
-    let rings = [];
-
-    if (medMinutes >= 60) {
-        baseR = 54 + offerBoost;
-        rings = [
-            { r: baseR,        col: 'rgba(148, 0, 211, 0.35)', w: 6 },
-            { r: baseR * 0.85, col: 'rgba(75, 0, 130, 0.45)',  w: 6 },
-            { r: baseR * 0.72, col: 'rgba(0, 128, 255, 0.55)', w: 6 },
-            { r: baseR * 0.58, col: 'rgba(0, 230, 118, 0.65)', w: 6 },
-            { r: baseR * 0.44, col: 'rgba(255, 235, 59, 0.8)', w: 6 },
-            { r: baseR * 0.30, col: 'rgba(255, 145, 0, 0.9)',  w: 6 },
-            { r: baseR * 0.16, col: 'rgba(255, 255, 224, 1)',  w: 7 }
-        ];
-    } else if (medMinutes >= 50) {
-        baseR = 46 + offerBoost;
-        rings = [
-            { r: baseR,        col: 'rgba(41, 182, 246, 0.75)', w: 5 },
-            { r: baseR * 0.76, col: 'rgba(255, 167, 38, 0.75)', w: 5 },
-            { r: baseR * 0.52, col: 'rgba(255, 238, 88, 0.88)', w: 5 },
-            { r: baseR * 0.25, col: 'rgba(255, 255, 220, 1)',    w: 5 }
-        ];
-    } else if (medMinutes >= 30) {
-        baseR = 39 + offerBoost;
-        rings = [
-            { r: baseR,        col: 'rgba(255, 138, 0, 0.65)',  w: 5 },
-            { r: baseR * 0.68, col: 'rgba(212, 225, 87, 0.82)', w: 5 },
-            { r: baseR * 0.34, col: 'rgba(255, 253, 180, 0.98)',w: 5 }
-        ];
-    } else if (medMinutes >= 20) {
-        baseR = 33 + offerBoost;
-        rings = [
-            { r: baseR,        col: 'rgba(205, 220, 57, 0.65)', w: 4 },
-            { r: baseR * 0.58, col: 'rgba(255, 245, 157, 0.9)', w: 4 }
-        ];
-    } else if (medMinutes >= 10) {
-        baseR = 28 + offerBoost;
-        rings = [
-            { r: baseR,        col: 'rgba(255, 213, 79, 0.6)',  w: 3.5 },
-            { r: baseR * 0.52, col: 'rgba(255, 252, 200, 0.85)',w: 3 }
-        ];
-    } else {
-        baseR = 24 + offerBoost;
-        rings = [
-            { r: baseR,        col: 'rgba(255, 241, 118, 0.45)',w: 2.5 }
-        ];
-    }
-
-    for (let i = 0; i < rings.length; i++) {
-        const rg = rings[i];
-        ctx.strokeStyle = rg.col;
-        ctx.lineWidth = rg.w;
-        ctx.beginPath();
-        ctx.arc(cx, cy, rg.r * pulse, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-
-    // Tâm sáng nhất ngay trên đầu
-    ctx.fillStyle = 'rgba(255, 255, 240, 0.85)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 8 * pulse, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Trên 60 phút: hoa lá mọc đung đưa + chim & bướm bay chơi đùa xung quanh
-    if (medMinutes >= 60) {
-        const sway = Math.sin(t * 0.005) * 4;
-        for (let i = 0; i < 8; i++) {
-            const ang = (i / 8) * Math.PI * 2;
-            const hx = cx + Math.cos(ang) * (baseR + 14);
-            const hy = cy + Math.sin(ang) * (baseR + 14);
-            ctx.fillStyle = '#66bb6a';
-            ctx.fillRect(Math.round(hx - 2 + sway * 0.5), Math.round(hy), 4, 6);
-            ctx.fillStyle = (i % 2 === 0) ? '#ff80ab' : '#ffeb3b';
-            ctx.fillRect(Math.round(hx - 3 + sway), Math.round(hy - 4), 6, 4);
-        }
-        for (let b = 0; b < 4; b++) {
-            const ba = t * 0.0018 + b * 1.57;
-            const bx = cx + Math.cos(ba) * (baseR + 24);
-            const by = cy + Math.sin(ba * 1.3) * (baseR + 18);
-            const wing = Math.sin(t * 0.02 + b) > 0 ? 4 : 1;
-            ctx.fillStyle = b < 2 ? '#fff59d' : '#80deea';
-            ctx.fillRect(Math.round(bx - wing), Math.round(by - 2), wing * 2, 4);
-        }
-    }
-}
-
-function drawPerson(ctx, e, t) {
-    const rx = Math.round(e.x), ry = Math.round(e.y);
-    const frames = getCharFrames(e.name, e.cfg, !!e.isMonk);
-    const idx = e.med ? 3 : (e.walk > 0.01 ? (Math.sin(e.walk) >= 0 ? 1 : 2) : 0);
-
-    const medMins = e.med ? ((e.medElapsedMs || 0) / 60000) : 0;
-    const offers = e.offerings || 0;
-    if (e.med || offers > 0) {
-        drawMeditationAura(ctx, rx, ry - 92, e.med ? medMins : (offers >= 5 ? 60 : 15), offers, t);
-    }
-
-    ctx.drawImage(frames[idx], rx - 72, ry - 118);
-
-    if (e.holdingFruit) {
-        ctx.fillStyle = '#ff5252';
-        ctx.beginPath();
-        ctx.arc(rx + 20, ry - 52, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#66bb6a';
-        ctx.fillRect(rx + 19, ry - 60, 3, 3);
-    }
-
-    if (e.chat) {
-        ctx.font = '11px "Courier New", monospace';
-        ctx.textAlign = 'center';
-        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 136;
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 18);
-        ctx.fillStyle = '#111';
-        ctx.fillText(e.chat, rx, by + 13);
-    }
-}
-
 function renderPreview() {
     const pc = document.getElementById('previewCanvas');
     if (!pc) return;
     const px = pc.getContext('2d');
     px.imageSmoothingEnabled = false;
     px.clearRect(0, 0, pc.width, pc.height);
-    const spr = createDetailedPortraitCanvas(cfg, false, 0, false);
+    const spr = createDetailedPortraitCanvas(cfg, false, 0, false, false);
     px.drawImage(spr, Math.round(46 - spr.width / 2), Math.round(58 - spr.height / 2));
 }
 
@@ -714,311 +605,583 @@ function setGender(g, btn) {
     renderPreview();
 }
 
+// --- MÔI TRƯỜNG & BẢN ĐỒ TĨNH (OFFSCREEN CANVAS) ---
 const MUSHROOMS = [
-    { x: 240, y: 1220 }, { x: 960, y: 780 }, { x: 260, y: 1840 }, { x: 980, y: 1980 }
+    { x: 170, y: 390, cap: '#e53935', spot: '#fffde7' },
+    { x: 1230, y: 410, cap: '#8e24aa', spot: '#f3e5f5' },
+    { x: 230, y: 860, cap: '#fb8c00', spot: '#fff8e1' },
+    { x: 1180, y: 980, cap: '#43a047', spot: '#e8f5e9' }
 ];
-const BUSHES = [
-    { x: 180, y: 980 }, { x: 520, y: 880 }, { x: 860, y: 1020 },
-    { x: 220, y: 1460 }, { x: 540, y: 1740 }, { x: 1060, y: 1240 }
+const GRASS_CLUMPS = [
+    { x: 320, y: 540 }, { x: 470, y: 780 }, { x: 350, y: 1030 },
+    { x: 860, y: 510 }, { x: 960, y: 950 }, { x: 560, y: 920 }
 ];
-const RANDOM_FLOWERS = [];
-for (let i = 0; i < 85; i++) {
-    const fx = 60 + ((i * 293 + (i % 7) * 53) % (MAP_W - 120));
-    const fy = 330 + ((i * 431 + (i % 11) * 71) % (MAP_H - 380));
-    RANDOM_FLOWERS.push({ x: fx, y: fy, kind: i % SPR_FLOWERS.length });
+const PIXEL_FLOWERS = [];
+for (let i = 0; i < 48; i++) {
+    const fx = 65 + ((i * 257) % (MAP_W - 130));
+    const fy = 215 + ((i * 397) % (MAP_H - 255));
+    const distPond = Math.hypot(fx - POND.x, fy - POND.y);
+    if (distPond > POND.r + 22) {
+        PIXEL_FLOWERS.push({ x: fx, y: fy, c: (i % 3 === 0) ? '#f48fb1' : ((i % 3 === 1) ? '#ffeb3b' : '#90caf9') });
+    }
 }
-const POND_PEBBLES = [
-    { x: POND.x - 118, y: POND.y + 18, rx: 14, ry: 9 },
-    { x: POND.x - 75,  y: POND.y + 92, rx: 18, ry: 11 },
-    { x: POND.x + 12,  y: POND.y + 128,rx: 15, ry: 9 },
-    { x: POND.x + 88,  y: POND.y + 84, rx: 17, ry: 10 },
-    { x: POND.x + 124, y: POND.y + 12, rx: 13, ry: 8 }
+const BOULDERS = [
+    { x: POND.x - 105, y: POND.y + 42, rx: 22, ry: 13 },
+    { x: POND.x + 92, y: POND.y + 56, rx: 26, ry: 15 },
+    { x: POND.x - 24, y: POND.y + 118, rx: 19, ry: 11 }
 ];
+const KOI_LIST = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff'].map((col, idx) => ({
+    col, ang: idx * 1.0, rad: 30 + idx * 11, spd: 0.00018 + (idx % 3) * 0.00005
+}));
 
 const staticCanvas = document.createElement('canvas');
 staticCanvas.width = MAP_W;
 staticCanvas.height = MAP_H;
 const staticCtx = staticCanvas.getContext('2d', { alpha: false });
+staticCtx.imageSmoothingEnabled = false;
 let cachedNight = null;
+
+function drawPixelFlower(s, x, y, petalCol) {
+    s.fillStyle = '#141518';
+    s.fillRect(x - 4, y - 4, 9, 9);
+    s.fillStyle = petalCol;
+    s.fillRect(x - 3, y - 3, 3, 3);
+    s.fillRect(x + 1, y - 3, 3, 3);
+    s.fillRect(x - 3, y + 1, 3, 3);
+    s.fillRect(x + 1, y + 1, 3, 3);
+    s.fillStyle = '#fff59d';
+    s.fillRect(x - 1, y - 1, 3, 3);
+}
+
+function drawGiantMushroom(s, m) {
+    // Cao hơn người (~84px)
+    s.fillStyle = 'rgba(0,0,0,0.34)';
+    s.beginPath(); s.ellipse(m.x, m.y + 4, 26, 7, 0, 0, Math.PI * 2); s.fill();
+
+    // Thân nấm
+    s.fillStyle = '#141518';
+    s.fillRect(m.x - 11, m.y - 44, 22, 46);
+    s.fillStyle = '#f5ebe0';
+    s.fillRect(m.x - 9, m.y - 42, 18, 42);
+
+    // Mũ nấm khổng lồ
+    s.fillStyle = '#141518';
+    s.beginPath(); s.arc(m.x, m.y - 48, 34, Math.PI, 0); s.lineTo(m.x + 34, m.y - 42); s.lineTo(m.x - 34, m.y - 42); s.closePath(); s.fill();
+
+    s.fillStyle = m.cap;
+    s.beginPath(); s.arc(m.x, m.y - 48, 31, Math.PI, 0); s.lineTo(m.x + 31, m.y - 44); s.lineTo(m.x - 31, m.y - 44); s.closePath(); s.fill();
+
+    s.fillStyle = m.spot;
+    s.fillRect(m.x - 18, m.y - 62, 7, 6);
+    s.fillRect(m.x - 3, m.y - 71, 8, 7);
+    s.fillRect(m.x + 12, m.y - 60, 7, 6);
+}
+
+function drawBodhiTree(s, night) {
+    // Ánh sáng dịu tỏa quanh gốc & tán cây Bồ Đề trung tâm
+    const aura = s.createRadialGradient(BODHI.x, BODHI.y - 35, 16, BODHI.x, BODHI.y - 25, 155);
+    aura.addColorStop(0, night ? 'rgba(255, 224, 130, 0.26)' : 'rgba(255, 245, 157, 0.34)');
+    aura.addColorStop(1, 'rgba(255, 224, 130, 0)');
+    s.fillStyle = aura;
+    s.beginPath(); s.arc(BODHI.x, BODHI.y - 25, 155, 0, Math.PI * 2); s.fill();
+
+    s.fillStyle = 'rgba(0,0,0,0.38)';
+    s.beginPath(); s.ellipse(BODHI.x, BODHI.y + 8, 62, 14, 0, 0, Math.PI * 2); s.fill();
+
+    // Thân Bồ Đề to
+    s.fillStyle = '#141518';
+    s.fillRect(BODHI.x - 20, BODHI.y - 62, 40, 70);
+    s.fillStyle = '#5d4037';
+    s.fillRect(BODHI.x - 17, BODHI.y - 59, 34, 64);
+
+    // Tán rộng pixel
+    s.fillStyle = '#141518';
+    s.beginPath(); s.arc(BODHI.x, BODHI.y - 84, 78, 0, Math.PI * 2); s.fill();
+    s.fillStyle = night ? '#1f4e2b' : '#388e3c';
+    s.beginPath(); s.arc(BODHI.x, BODHI.y - 84, 74, 0, Math.PI * 2); s.fill();
+    s.fillStyle = night ? '#2e6f3b' : '#66bb6a';
+    s.beginPath(); s.arc(BODHI.x - 22, BODHI.y - 96, 36, 0, Math.PI * 2); s.fill();
+    s.beginPath(); s.arc(BODHI.x + 24, BODHI.y - 90, 32, 0, Math.PI * 2); s.fill();
+}
+
+function drawTamQuanGate(s, night) {
+    const gx = GATE.x, gy = GATE.y;
+    s.fillStyle = 'rgba(255, 213, 79, 0.16)';
+    s.fillRect(gx - 56, gy - 46, 112, 64);
+
+    s.fillStyle = '#141518';
+    s.fillRect(gx - 42, gy - 36, 12, 44);
+    s.fillRect(gx + 30, gy - 36, 12, 44);
+    s.fillRect(gx - 18, gy - 26, 8, 34);
+    s.fillRect(gx + 10, gy - 26, 8, 34);
+
+    s.fillStyle = night ? '#795548' : '#a1663b';
+    s.fillRect(gx - 40, gy - 34, 8, 40);
+    s.fillRect(gx + 32, gy - 34, 8, 40);
+    s.fillRect(gx - 16, gy - 24, 5, 30);
+    s.fillRect(gx + 11, gy - 24, 5, 30);
+
+    // Mái Tam Quan
+    s.fillStyle = '#141518';
+    s.fillRect(gx - 50, gy - 44, 100, 12);
+    s.fillStyle = night ? '#c68b2c' : '#f4b41a';
+    s.fillRect(gx - 48, gy - 42, 96, 8);
+}
 
 function buildMap(night) {
     if (cachedNight === night) return;
     cachedNight = night;
     const s = staticCtx;
+    s.imageSmoothingEnabled = false;
 
-    const tile = 32;
-    for (let y = 300; y < MAP_H; y += tile) {
+    const tile = 28;
+    for (let y = 175; y < MAP_H; y += tile) {
         for (let x = 0; x < MAP_W; x += tile) {
+            const v = Math.sin(x * 0.006) + Math.cos(y * 0.006);
             const alt = ((x / tile) + (y / tile)) % 2 === 0;
             s.fillStyle = night
-                ? (alt ? '#172617' : '#132013')
-                : (alt ? '#6ea644' : '#63993b');
+                ? (v > 0.25 ? (alt ? '#172316' : '#131e12') : (alt ? '#122615' : '#0e1f11'))
+                : (v > 0.25 ? (alt ? '#55723c' : '#4a6533') : (alt ? '#388e3c' : '#2e7d32'));
             s.fillRect(x, y, tile, tile);
-            s.fillStyle = night ? '#233822' : '#85bd55';
-            s.fillRect(x + 6, y + 8, 3, 2);
-            s.fillRect(x + 20, y + 22, 3, 2);
         }
     }
 
-    const skyGrad = s.createLinearGradient(0, 0, 0, 320);
-    if (night) {
-        skyGrad.addColorStop(0, '#070d1c');
-        skyGrad.addColorStop(1, '#1a2c47');
-    } else {
-        skyGrad.addColorStop(0, '#4fa3e3');
-        skyGrad.addColorStop(1, '#c9ecff');
-    }
-    s.fillStyle = skyGrad;
-    s.fillRect(0, 0, MAP_W, 320);
+    // Bầu trời & dãy núi trùng điệp ôm sát mép trên
+    s.fillStyle = night ? '#0b1424' : '#8ec5f8';
+    s.fillRect(0, 0, MAP_W, 180);
 
-    if (night) {
+    if (!night) {
+        s.fillStyle = '#fff176';
+        s.beginPath(); s.arc(1180, 48, 22, 0, Math.PI * 2); s.fill();
+    } else {
         s.fillStyle = '#fff9c4';
-        s.beginPath(); s.arc(1030, 72, 22, 0, Math.PI * 2); s.fill();
+        s.beginPath(); s.arc(1160, 46, 16, 0, Math.PI * 2); s.fill();
         s.fillStyle = '#ffffff';
         for (let i = 0; i < 24; i++) {
-            s.fillRect((i * 79) % MAP_W, 18 + ((i * 37) % 110), 2, 2);
+            s.fillRect((i * 59) % MAP_W, 14 + ((i * 23) % 70), 2, 2);
         }
-    } else {
-        s.fillStyle = '#ffee58';
-        s.beginPath(); s.arc(1030, 76, 28, 0, Math.PI * 2); s.fill();
     }
 
-    s.fillStyle = night ? '#1b314a' : '#5e8aa8';
+    // Dãy núi sau & trước
+    s.fillStyle = night ? '#1a2c3d' : '#5c8599';
     s.beginPath();
-    s.moveTo(0, 310); s.lineTo(180, 130); s.lineTo(420, 230); s.lineTo(680, 110);
-    s.lineTo(960, 225); s.lineTo(1180, 145); s.lineTo(MAP_W, 240); s.lineTo(MAP_W, 310);
-    s.closePath(); s.fill();
+    s.moveTo(0, 180); s.lineTo(0, 95); s.lineTo(220, 46); s.lineTo(480, 102);
+    s.lineTo(740, 38); s.lineTo(1040, 96); s.lineTo(1280, 48); s.lineTo(MAP_W, 98);
+    s.lineTo(MAP_W, 180); s.closePath(); s.fill();
 
-    s.fillStyle = night ? '#14263b' : '#3f6c58';
+    s.fillStyle = night ? '#233b39' : '#4d7c6f';
     s.beginPath();
-    s.moveTo(0, 320); s.lineTo(250, 195); s.lineTo(540, 285); s.lineTo(840, 185);
-    s.lineTo(1110, 275); s.lineTo(MAP_W, 205); s.lineTo(MAP_W, 320);
-    s.closePath(); s.fill();
+    s.moveTo(0, 180); s.lineTo(0, 122); s.lineTo(180, 82); s.lineTo(420, 128);
+    s.lineTo(700, 76); s.lineTo(980, 124); s.lineTo(1240, 86); s.lineTo(MAP_W, 122);
+    s.lineTo(MAP_W, 180); s.closePath(); s.fill();
 
-    s.fillStyle = night ? 'rgba(180, 210, 240, 0.16)' : 'rgba(255, 255, 255, 0.52)';
-    for (let i = 0; i < 9; i++) {
-        const mx = 90 + i * 140;
-        const my = 175 + (i % 3) * 34;
-        s.beginPath();
-        s.ellipse(mx, my, 92, 22, 0, 0, Math.PI * 2);
-        s.fill();
-    }
+    // Sương mây mờ ảo vờn quanh núi
+    s.fillStyle = night ? 'rgba(170, 210, 225, 0.14)' : 'rgba(255, 255, 255, 0.36)';
+    s.fillRect(0, 118, MAP_W, 24);
+    s.fillRect(0, 146, MAP_W, 22);
 
-    RANDOM_FLOWERS.forEach(f => {
-        if (Math.hypot(f.x - POND.x, f.y - POND.y) < POND.r + 24) return;
-        s.drawImage(SPR_FLOWERS[f.kind], f.x, f.y);
-    });
+    // Đường đất dẫn từ Bồ Đề xuống Cổng Tam Quan
+    s.fillStyle = night ? '#4a3a2c' : '#b88b5a';
+    s.fillRect(674, 345, 52, 315);
 
-    s.fillStyle = night ? '#37474f' : '#8d8476';
-    s.beginPath(); s.ellipse(POND.x, POND.y, POND.r + 10, POND.r * 0.72 + 10, 0, 0, Math.PI * 2); s.fill();
-    s.fillStyle = night ? '#123a54' : '#3b82c4';
-    s.beginPath(); s.ellipse(POND.x, POND.y, POND.r, POND.r * 0.72, 0, 0, Math.PI * 2); s.fill();
+    // Bể cá + đá cuội to ven bờ
+    s.fillStyle = night ? '#2a352c' : '#6f7d63';
+    s.beginPath(); s.arc(POND.x, POND.y, POND.r + 8, 0, Math.PI * 2); s.fill();
+    s.fillStyle = night ? '#123c54' : '#3a7bb8';
+    s.beginPath(); s.arc(POND.x, POND.y, POND.r, 0, Math.PI * 2); s.fill();
 
-    POND_PEBBLES.forEach(pb => {
-        s.fillStyle = '#263238';
-        s.beginPath(); s.ellipse(pb.x + 2, pb.y + 3, pb.rx, pb.ry, 0, 0, Math.PI * 2); s.fill();
+    BOULDERS.forEach(b => {
+        s.fillStyle = '#141518';
+        s.beginPath(); s.ellipse(b.x, b.y, b.rx + 2, b.ry + 2, 0, 0, Math.PI * 2); s.fill();
         s.fillStyle = night ? '#546e7a' : '#90a4ae';
-        s.beginPath(); s.ellipse(pb.x, pb.y, pb.rx, pb.ry, 0, 0, Math.PI * 2); s.fill();
+        s.beginPath(); s.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2); s.fill();
     });
 
-    BUSHES.forEach(b => {
-        s.drawImage(SPR_BUSH, Math.round(b.x - SPR_BUSH.width / 2), Math.round(b.y - SPR_BUSH.height + 6));
+    // Khóm bụi cỏ & hoa nhỏ pixel rải rác
+    GRASS_CLUMPS.forEach(g => {
+        s.fillStyle = '#141518';
+        s.fillRect(g.x - 14, g.y - 8, 28, 12);
+        s.fillStyle = night ? '#2e6b34' : '#66bb6a';
+        s.fillRect(g.x - 12, g.y - 6, 6, 8);
+        s.fillRect(g.x - 3, g.y - 9, 6, 11);
+        s.fillRect(g.x + 6, g.y - 6, 6, 8);
     });
 
-    MUSHROOMS.forEach(m => {
-        s.drawImage(SPR_MUSHROOM, Math.round(m.x - SPR_MUSHROOM.width / 2), Math.round(m.y - SPR_MUSHROOM.height + 6));
-    });
+    PIXEL_FLOWERS.forEach(f => drawPixelFlower(s, f.x, f.y, f.c));
 
-    s.drawImage(SPR_BODHI, Math.round(BODHI.x - SPR_BODHI.width / 2), Math.round(BODHI.y - SPR_BODHI.height + 12));
-
-    s.fillStyle = '#6d4c41';
-    s.fillRect(GATE.x - 56, GATE.y - 76, 12, 76);
-    s.fillRect(GATE.x + 44, GATE.y - 76, 12, 76);
-    s.fillRect(GATE.x - 24, GATE.y - 54, 8, 54);
-    s.fillRect(GATE.x + 16, GATE.y - 54, 8, 54);
-    s.fillStyle = '#c62828';
-    s.fillRect(GATE.x - 68, GATE.y - 84, 136, 12);
-    s.fillRect(GATE.x - 34, GATE.y - 62, 68, 9);
+    // Cây nấm khổng lồ, Cổng Tam Quan, Cây Bồ Đề trung tâm
+    MUSHROOMS.forEach(m => drawGiantMushroom(s, m));
+    drawTamQuanGate(s, night);
+    drawBodhiTree(s, night);
 }
 
-let fruitSpawned = false;
-const FRUITS = [
-    { x: BODHI.x - 42, y: BODHI.y - 58, taken: false },
-    { x: BODHI.x + 38, y: BODHI.y - 64, taken: false },
-    { x: BODHI.x - 12, y: BODHI.y - 84, taken: false },
-    { x: BODHI.x + 24, y: BODHI.y - 34, taken: false }
+function drawPondKoi(ctx, time) {
+    ctx.save();
+    ctx.translate(POND.x, POND.y);
+    KOI_LIST.forEach((f, i) => {
+        const t = time * f.spd + f.ang;
+        const fx = Math.round(Math.cos(t) * (f.rad * 0.72));
+        const fy = Math.round(Math.sin(t * 0.8) * (f.rad * 0.65));
+        ctx.fillStyle = f.col;
+        ctx.fillRect(fx - 4, fy - 2, 8, 4);
+        const wag = Math.round(Math.sin(time * 0.005 + i) * 2);
+        ctx.fillRect(fx - 7, fy - 2 + wag, 3, 4);
+    });
+    ctx.restore();
+}
+
+// --- OBJECT POOL CHO HẠT HIỆU ỨNG (BƯỚM, CÁNH HOA, ĐOM ĐÓM, CHIM) ---
+const pool = [];
+for (let i = 0; i < 120; i++) {
+    pool.push({ active: false, type: 'glow', x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, col: '#ffeb3b', r: 3 });
+}
+function spawnParticle(type, x, y, vx, vy, maxLife, col, r = 3) {
+    for (let i = 0; i < pool.length; i++) {
+        const p = pool[i];
+        if (!p.active) {
+            p.active = true; p.type = type; p.x = x; p.y = y;
+            p.vx = vx; p.vy = vy; p.life = 0; p.maxLife = maxLife; p.col = col; p.r = r;
+            return p;
+        }
+    }
+    return null;
+}
+
+// Bướm định kỳ mỗi 60 giây quanh các khóm bụi cỏ
+let lastButterflyWave = 0;
+function spawnButterfliesAroundGrass() {
+    GRASS_CLUMPS.forEach((g, idx) => {
+        for (let k = 0; k < 2; k++) {
+            const ang = idx + k * 2.1;
+            spawnParticle(
+                'butterfly',
+                g.x + Math.cos(ang) * 16,
+                g.y + Math.sin(ang) * 12,
+                (Math.random() - 0.5) * 0.6,
+                (Math.random() - 0.5) * 0.5,
+                9000,
+                (idx + k) % 2 === 0 ? '#ffe082' : '#f48fb1',
+                3
+            );
+        }
+    });
+}
+
+function spawnCelestialBurst(x, y) {
+    for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2;
+        spawnParticle('petal', x, y, Math.cos(a) * 1.1, Math.sin(a) * 0.8 + 0.4, 2400, i % 2 === 0 ? '#f48fb1' : '#fff59d', 3);
+    }
+}
+
+function stepParticles(dt, time) {
+    if (time - lastButterflyWave >= 60000) {
+        lastButterflyWave = time;
+        spawnButterfliesAroundGrass();
+    }
+    for (let i = 0; i < pool.length; i++) {
+        const p = pool[i];
+        if (!p.active) continue;
+        p.life += dt;
+        if (p.life >= p.maxLife) { p.active = false; continue; }
+        if (p.type === 'butterfly') {
+            p.x += Math.cos(time * 0.002 + i) * 0.65 + p.vx;
+            p.y += Math.sin(time * 0.0025 + i) * 0.55 + p.vy;
+        } else if (p.type === 'petal') {
+            p.x += Math.sin(time * 0.004 + i) * 0.5 + p.vx * 0.25;
+            p.y += 0.55 + p.vy * 0.2;
+        } else {
+            p.x += p.vx;
+            p.y += p.vy;
+        }
+    }
+}
+
+function drawParticles(ctx, time) {
+    for (let i = 0; i < pool.length; i++) {
+        const p = pool[i];
+        if (!p.active) continue;
+        const alpha = Math.max(0, 1 - p.life / p.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        if (p.type === 'butterfly') {
+            const flap = Math.sin(time * 0.018 + i) > 0 ? 3 : 1;
+            ctx.fillStyle = p.col;
+            ctx.fillRect(Math.round(p.x - flap), Math.round(p.y - 2), flap, 4);
+            ctx.fillRect(Math.round(p.x + 1), Math.round(p.y - 2), flap, 4);
+        } else {
+            ctx.fillStyle = p.col;
+            ctx.fillRect(Math.round(p.x), Math.round(p.y), p.r, p.r);
+        }
+        ctx.restore();
+    }
+}
+
+// --- HỆ THỐNG HÀO QUANG NGỒI THIỀN (LẤY ĐẦU LÀM TÂM, CHUYỂN CẤP THEO PHÚT) ---
+function getEffectiveMedMinutes() {
+    if (testMedMinutesOverride !== null) return testMedMinutesOverride;
+    if (!isMed || !medStartAt) return 0;
+    return (Date.now() - medStartAt) / 60000;
+}
+
+function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
+    if (!isMed && mins <= 0 && meritBoost <= 0) return;
+
+    const pulse = 0.94 + Math.sin(time * 0.004) * 0.06;
+    const boostR = meritBoost * 4;
+    let baseR = 24 + Math.min(34, mins * 0.45) + boostR;
+    baseR *= pulse;
+
+    ctx.save();
+    ctx.translate(Math.round(headCx), Math.round(headCy));
+
+    if (mins > 60) {
+        // Trên 60 phút: 7 màu rực rỡ + chim/bướm + hoa lá xung quanh
+        const colors7 = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#3d5afe', '#d500f9'];
+        colors7.forEach((col, idx) => {
+            const r = baseR + idx * 4.5;
+            ctx.strokeStyle = col;
+            ctx.globalAlpha = Math.max(0.18, 0.72 - idx * 0.08);
+            ctx.lineWidth = 2.2;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        });
+
+        // Hoa lá xung quanh chỗ ngồi đung đưa nhẹ theo gió
+        ctx.globalAlpha = 0.9;
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + time * 0.0005;
+            const sway = Math.sin(time * 0.003 + i) * 3;
+            const fx = Math.round(Math.cos(a) * (baseR + 12) + sway);
+            const fy = Math.round(Math.sin(a) * (baseR * 0.65) + 26);
+            ctx.fillStyle = '#66bb6a';
+            ctx.fillRect(fx - 2, fy + 2, 4, 5);
+            ctx.fillStyle = '#f48fb1';
+            ctx.fillRect(fx - 3, fy - 2, 6, 4);
+        }
+
+        // Bướm & chim nhỏ bay lượn quanh tâm
+        for (let b = 0; b < 4; b++) {
+            const ang = time * 0.0016 + b * 1.57;
+            const bx = Math.round(Math.cos(ang) * (baseR + 18));
+            const by = Math.round(Math.sin(ang) * (baseR * 0.85));
+            ctx.fillStyle = b < 2 ? '#fff59d' : '#ffffff';
+            ctx.fillRect(bx - 3, by - 2, 6, 3);
+        }
+    } else if (mins >= 60) {
+        // 60 phút: 5 màu hòa quyện, viền ngoài nhạt dần
+        const colors5 = ['#ff5252', '#ffab40', '#ffff00', '#69f0ae', '#40c4ff'];
+        colors5.forEach((col, idx) => {
+            ctx.strokeStyle = col;
+            ctx.globalAlpha = Math.max(0.12, 0.65 - idx * 0.12);
+            ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(0, 0, baseR + idx * 4, 0, Math.PI * 2); ctx.stroke();
+        });
+    } else if (mins >= 50) {
+        // 50 phút: thêm viền phát sáng màu xanh bao quanh
+        ctx.strokeStyle = '#ffd54f';
+        ctx.globalAlpha = 0.65;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.stroke();
+
+        ctx.strokeStyle = '#29b6f6';
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, baseR + 7, 0, Math.PI * 2); ctx.stroke();
+    } else if (mins >= 30) {
+        // 30 phút: vàng chanh pha cam, rộng hơn
+        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, baseR + 10);
+        g.addColorStop(0, 'rgba(255, 241, 118, 0.65)');
+        g.addColorStop(0.65, 'rgba(255, 167, 38, 0.35)');
+        g.addColorStop(1, 'rgba(255, 112, 67, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, baseR + 10, 0, Math.PI * 2); ctx.fill();
+    } else if (mins >= 20) {
+        // 20 phút: vàng chanh
+        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, baseR + 6);
+        g.addColorStop(0, 'rgba(238, 255, 65, 0.58)');
+        g.addColorStop(1, 'rgba(255, 238, 88, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, baseR + 6, 0, Math.PI * 2); ctx.fill();
+    } else if (mins >= 10) {
+        // 10 phút: vàng nhẹ
+        const g = ctx.createRadialGradient(0, 0, 3, 0, 0, baseR);
+        g.addColorStop(0, 'rgba(255, 245, 157, 0.45)');
+        g.addColorStop(1, 'rgba(255, 235, 59, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
+    } else if (isMed || meritBoost > 0) {
+        // Mới ngồi thiền hoặc có phước báu cúng dường
+        const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 22 + boostR);
+        g.addColorStop(0, 'rgba(255, 245, 157, 0.4)');
+        g.addColorStop(1, 'rgba(255, 213, 79, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, 22 + boostR, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+// --- SỰ KIỆN SƯ ĐI KHẤT THỰC (06:00 - 11:00 VN) & 3 CHƯ THIÊN ---
+let monk = null; // Tối đa 1 vị Sư tại một thời điểm
+let hasFruitInHand = false;
+let meritCount = 0;
+let almsCooldownUntil = 0;
+
+const FRUIT_SPOTS = [
+    { x: BODHI.x - 42, y: BODHI.y - 24, ripe: false },
+    { x: BODHI.x + 42, y: BODHI.y - 24, ripe: false },
+    { x: 245, y: 840, ripe: false },
+    { x: 1155, y: 960, ripe: false }
 ];
 
-let monk = null;
-let monkSpawnedOnce = false;
-let celestialList = [];
-let myHoldingFruit = false;
-let myOfferings = 0;
-
-function updateMonkSchedule(vnHour) {
-    const inAlmsWindow = (vnHour >= 6 && vnHour < 11);
-    if (inAlmsWindow && !monk && !monkSpawnedOnce) {
-        monkSpawnedOnce = true;
-        const fromLeft = Math.random() < 0.5;
-        const startX = fromLeft ? 40 : MAP_W - 40;
-        const endX = fromLeft ? MAP_W - 40 : 40;
-        const yPos = 980 + Math.floor(Math.random() * 420);
-        monk = {
-            name: 'Vị Sư Khất Thực',
-            cfg: { gender: 'male', skin: SKIN_LIST[1], hairStyle: 4, hairColor: '#1d2428', hairShade: '#3d4c54', outfitId: 0 },
-            isMonk: true,
-            x: startX, y: yPos, endX, walk: 0, med: false, chat: 'A Di Đà Phật'
-        };
-        fruitSpawned = true;
-        FRUITS.forEach(f => { f.taken = false; });
-        celestialList = [0, 1, 2].map(i => ({
-            ang: i * 2.09,
-            petalProgress: 0,
-            tossed: false
-        }));
-    } else if (!inAlmsWindow && monk) {
+function spawnAlmsMonkIfNeeded(force = false) {
+    const clk = getVNClock();
+    if (!isAlmsWindow(clk.hours)) {
         monk = null;
-        fruitSpawned = false;
-        celestialList = [];
+        FRUIT_SPOTS.forEach(f => { f.ripe = false; });
+        return;
     }
+    if (monk) return;
+    const now = Date.now();
+    if (!force && now < almsCooldownUntil) return;
+
+    const routes = [
+        { sx: 30, sy: 620, ex: MAP_W - 30, ey: 620 },
+        { sx: MAP_W - 30, sy: 510, ex: 30, ey: 510 },
+        { sx: 30, sy: 840, ex: MAP_W - 30, ey: 840 }
+    ];
+    const rt = routes[Math.floor(Math.random() * routes.length)];
+    monk = {
+        x: rt.sx, y: rt.sy, ex: rt.ex, ey: rt.ey,
+        spd: 1.05, walk: 0,
+        cfg: { gender: 'male', skin: '#e8b48a', hairStyle: 4, hairColor: '#e8b48a', hairShade: '#ffe0c2', outfitId: 1 },
+        celestials: [0, 2.1, 4.2].map(ph => ({ phase: ph }))
+    };
+    FRUIT_SPOTS.forEach(f => { f.ripe = true; });
+    almsCooldownUntil = now + 45000;
 }
 
-function drawDynamicWorld(ctx, now) {
-    const bPulse = 0.85 + Math.sin(now * 0.0025) * 0.15;
-    const bGrad = ctx.createRadialGradient(BODHI.x, BODHI.y - 48, 12, BODHI.x, BODHI.y - 48, 130 * bPulse);
-    bGrad.addColorStop(0, 'rgba(255, 245, 157, 0.36)');
-    bGrad.addColorStop(1, 'rgba(255, 245, 157, 0)');
-    ctx.fillStyle = bGrad;
-    ctx.beginPath(); ctx.arc(BODHI.x, BODHI.y - 48, 130 * bPulse, 0, Math.PI * 2); ctx.fill();
-
-    const gPulse = 0.8 + Math.sin(now * 0.003) * 0.2;
-    ctx.strokeStyle = `rgba(255, 224, 130, ${0.75 * gPulse})`;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(GATE.x - 16, GATE.y - 48, 32, 48);
-
-    for (let i = 0; i < 5; i++) {
-        const ang = now * 0.0005 + i * 1.25;
-        const kx = POND.x + Math.cos(ang) * 55;
-        const ky = POND.y + Math.sin(ang) * 35;
-        ctx.fillStyle = i % 2 === 0 ? '#ff6d00' : '#ffffff';
-        ctx.fillRect(Math.round(kx - 4), Math.round(ky - 2), 8, 4);
+function stepAlmsEvent(dt, time) {
+    const clk = getVNClock();
+    if (!isAlmsWindow(clk.hours)) {
+        if (monk) { monk = null; FRUIT_SPOTS.forEach(f => { f.ripe = false; }); }
+        return;
     }
-
-    const secInMin = (now / 1000) % 60;
-    if (secInMin < 15) {
-        BUSHES.forEach((b, idx) => {
-            const ba = now * 0.004 + idx;
-            const bx = b.x + Math.cos(ba) * 24;
-            const by = b.y - 16 + Math.sin(ba * 1.7) * 12;
-            ctx.fillStyle = idx % 2 === 0 ? '#fff176' : '#81d4fa';
-            ctx.fillRect(Math.round(bx - 3), Math.round(by - 2), 6, 4);
-        });
-    }
-
-    if (fruitSpawned) {
-        FRUITS.forEach(fr => {
-            if (!fr.taken) {
-                ctx.fillStyle = '#ff5252';
-                ctx.beginPath(); ctx.arc(fr.x, fr.y, 6, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#66bb6a';
-                ctx.fillRect(fr.x - 1, fr.y - 8, 3, 3);
-            }
-        });
-    }
-}
-
-function updateAndDrawMonkAndCelestials(ctx, now) {
+    if (!monk) spawnAlmsMonkIfNeeded(false);
     if (!monk) return;
-    const dir = monk.endX > monk.x ? 1 : -1;
-    monk.x += dir * 0.65;
-    monk.walk += 0.14;
 
-    drawPerson(ctx, monk, now);
-
-    for (let i = 0; i < celestialList.length; i++) {
-        const c = celestialList[i];
-        const ca = now * 0.002 + c.ang;
-        const cx = monk.x + Math.cos(ca) * 38;
-        const cy = monk.y - 78 + Math.sin(ca * 1.4) * 18;
-
-        ctx.fillStyle = '#fff59d';
-        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
-
-        if (!c.tossed) {
-            c.petalProgress += 0.015;
-            const py = cy + c.petalProgress * 28;
-            const alpha = Math.max(0, 1 - c.petalProgress);
-            ctx.fillStyle = `rgba(255, 128, 171, ${alpha})`;
-            ctx.fillRect(Math.round(cx - 3), Math.round(py), 5, 4);
-            if (c.petalProgress >= 1) c.tossed = true;
-        }
-    }
-
-    if ((dir > 0 && monk.x >= monk.endX) || (dir < 0 && monk.x <= monk.endX)) {
+    const dx = monk.ex - monk.x;
+    const dy = monk.ey - monk.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 4) {
+        monk.x += (dx / dist) * monk.spd;
+        monk.y += (dy / dist) * monk.spd;
+        monk.walk += 0.18;
+    } else {
+        // Ra khỏi mép map: biến mất kèm 3 Chư Thiên
         monk = null;
-        fruitSpawned = false;
-        celestialList = [];
+        FRUIT_SPOTS.forEach(f => { f.ripe = false; });
+        return;
     }
-}
 
-function updateStatusHud() {
-    const el = document.getElementById('hud-status');
-    if (el) el.textContent = `Trái: ${myHoldingFruit ? 1 : 0} | Cúng: ${myOfferings}`;
-}
-
-function interactAction() {
-    if (!myHoldingFruit && fruitSpawned) {
-        for (const fr of FRUITS) {
-            if (!fr.taken && Math.hypot(myX - fr.x, myY - fr.y) < 75) {
-                fr.taken = true;
-                myHoldingFruit = true;
-                pushChatLine('Hệ thống', 'Bạn đã hái trái cây, hãy mang tới cúng dường vị sư.');
-                updateStatusHud();
-                return;
+    // Hái trái khi lại gần trái chín trên cây/nấm
+    if (!hasFruitInHand) {
+        for (let i = 0; i < FRUIT_SPOTS.length; i++) {
+            const fs = FRUIT_SPOTS[i];
+            if (fs.ripe && Math.hypot(myX - fs.x, myY - fs.y) < 38) {
+                fs.ripe = false;
+                hasFruitInHand = true;
+                pushChatLine(myName, 'Đã hái trái dâng Sư');
+                break;
             }
         }
     }
-    if (myHoldingFruit && monk && Math.hypot(myX - monk.x, myY - monk.y) < 75) {
-        myHoldingFruit = false;
-        myOfferings += 1;
-        celestialList = [0, 1, 2].map(i => ({ ang: i * 2.09, petalProgress: 0, tossed: false }));
-        pushChatLine('Hệ thống', `Bạn đã cúng dường (tổng ${myOfferings} lần)!`);
-        updateStatusHud();
+
+    // Cúng dường khi đến gần Sư (không giới hạn số lần)
+    if (hasFruitInHand && Math.hypot(myX - monk.x, myY - monk.y) < 46) {
+        hasFruitInHand = false;
+        meritCount++;
+        spawnCelestialBurst(monk.x, monk.y - 45);
+        pushChatLine(myName, `Cúng dường thành tâm (+${meritCount})`);
+        updateStatusHUD();
+    }
+
+    // 3 Chư Thiên như đom đóm tung hoa rơi rồi tan biến khi có phước báu cúng dường
+    if (meritCount > 0 && Math.random() < 0.08) {
+        const c0 = monk.celestials[0];
+        const cx = monk.x + Math.cos(time * 0.003 + c0.phase) * 34;
+        const cy = monk.y - 54 + Math.sin(time * 0.004 + c0.phase) * 16;
+        spawnParticle('petal', cx, cy, (Math.random() - 0.5) * 0.6, 0.5, 1900, '#fff59d', 3);
     }
 }
 
+function drawAlmsWorld(ctx, time) {
+    // Vẽ trái cây chín trên cây/nấm
+    FRUIT_SPOTS.forEach(fs => {
+        if (!fs.ripe) return;
+        ctx.fillStyle = '#141518';
+        ctx.fillRect(Math.round(fs.x - 5), Math.round(fs.y - 5), 10, 10);
+        ctx.fillStyle = '#ff5252';
+        ctx.fillRect(Math.round(fs.x - 4), Math.round(fs.y - 4), 8, 8);
+        ctx.fillStyle = '#ffeb3b';
+        ctx.fillRect(Math.round(fs.x - 2), Math.round(fs.y - 3), 2, 2);
+    });
+
+    if (!monk) return;
+    const frames = getCharFrames('Vị Sư', monk.cfg, false, true);
+    const fIdx = Math.sin(monk.walk) >= 0 ? 1 : 2;
+    ctx.drawImage(frames[fIdx], Math.round(monk.x - 72), Math.round(monk.y - 118));
+
+    // Vẽ 3 Chư Thiên nhỏ như đom đóm phát sáng bay xung quanh
+    if (meritCount > 0) {
+        monk.celestials.forEach((cel, idx) => {
+            const ang = time * 0.0025 + cel.phase + idx * 0.3;
+            const gx = Math.round(monk.x + Math.cos(ang) * 34);
+            const gy = Math.round(monk.y - 56 + Math.sin(ang * 1.3) * 18);
+            ctx.fillStyle = 'rgba(255, 245, 157, 0.35)';
+            ctx.beginPath(); ctx.arc(gx, gy, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff9c4';
+            ctx.fillRect(gx - 2, gy - 2, 4, 4);
+        });
+    }
+}
+
+// --- KHUNG CHAT UI (40% ĐEN MỜ, LƯU 60 GIÂY, MỞ RỘNG/THU GỌN, CUỘN MƯỢT) ---
 const chatLogEl = document.getElementById('chat-log');
+let chatExpanded = false;
 const chatEntries = [];
 
-function renderChatLog() {
-    const now = Date.now();
-    while (chatEntries.length && now - chatEntries[0].ts > 60000) {
-        chatEntries.shift();
-    }
-    chatLogEl.innerHTML = chatEntries.map(item =>
-        `<div class="chat-line"><span class="chat-name">${escapeHtml(item.who)}:</span> ${escapeHtml(item.text)}</div>`
-    ).join('');
-    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+function toggleChatExpand() {
+    chatExpanded = !chatExpanded;
+    chatLogEl.classList.toggle('expanded', chatExpanded);
+    document.getElementById('btn-chat-expand').textContent = chatExpanded ? '▼' : '▲';
 }
 
-function pushChatLine(who, text) {
-    chatEntries.push({ who, text, ts: Date.now() });
+function pushChatLine(sender, text) {
+    const clean = String(text || '').trim();
+    if (!clean) return;
+    chatEntries.push({ sender, text: clean, createdAt: Date.now() });
+    if (chatEntries.length > 60) chatEntries.shift();
     renderChatLog();
 }
 
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, m => ({ '&': '&', '<': '<', '>': '>', '"': '"', "'": ''' }[m]));
+function renderChatLog() {
+    const now = Date.now();
+    while (chatEntries.length > 0 && now - chatEntries[0].createdAt > CHAT_TTL_MS) {
+        chatEntries.shift();
+    }
+    chatLogEl.innerHTML = '';
+    chatEntries.forEach(item => {
+        const age = now - item.createdAt;
+        const div = document.createElement('div');
+        div.className = 'chat-item' + (age > CHAT_TTL_MS - 8000 ? ' fading' : '');
+        div.textContent = `${item.sender}: ${item.text}`;
+        chatLogEl.appendChild(div);
+    });
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
 }
 
-function toggleChatCollapse() {
-    const panel = document.getElementById('chat-panel');
-    const btn = document.getElementById('chat-toggle');
-    const col = panel.classList.toggle('collapsed');
-    btn.textContent = col ? '▴' : '▾';
-}
-
-setInterval(renderChatLog, 5000);
-
+// --- CANVAS & ĐIỀU KHIỂN ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
 function resizeCanvas() {
@@ -1030,8 +1193,9 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-let myName = 'Hành Giả', myX = 630, myY = 1260, tx = 630, ty = 1260;
-let isMed = false, medStartMs = 0, medElapsedMs = 0, walk = 0, chatMsg = '', chatTicks = 0;
+let myName = 'Hành Giả', myX = 700, myY = 510, tx = 700, ty = 510;
+let isMed = false, medStartAt = 0, walk = 0, chatMsg = '', chatTicks = 0;
+let gateNoticeTicks = 0;
 const keys = {};
 
 window.addEventListener('keydown', e => {
@@ -1039,7 +1203,6 @@ window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase(); keys[k] = true;
     if (e.code === 'Space') { e.preventDefault(); toggleMeditate(); }
     else if (k === 'm') toggleMusic();
-    else if (k === 'e') interactAction();
     else if (e.key === 'Enter') document.getElementById('chat-input').focus();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -1047,8 +1210,13 @@ window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 canvas.addEventListener('pointerdown', e => {
     if (isMed) return;
     const r = canvas.getBoundingClientRect();
-    tx = (e.clientX - r.left) - (canvas.width / 2 - myX);
-    ty = (e.clientY - r.top) - (canvas.height / 2 - myY);
+    const wx = (e.clientX - r.left) - (canvas.width / 2 - myX);
+    const wy = (e.clientY - r.top) - (canvas.height / 2 - myY);
+    if (Math.abs(wx - GATE.x) < GATE.w * 0.6 && Math.abs(wy - GATE.y) < GATE.h * 0.6) {
+        gateNoticeTicks = 150;
+    }
+    tx = wx;
+    ty = wy;
 });
 
 function toggleMeditate() {
@@ -1056,10 +1224,22 @@ function toggleMeditate() {
     document.getElementById('btn-meditate').classList.toggle('active', isMed);
     if (isMed) {
         tx = myX; ty = myY;
-        medStartMs = performance.now();
+        medStartAt = Date.now();
     } else {
-        medElapsedMs = 0;
+        medStartAt = 0;
+        if (testMedMinutesOverride !== null) testMedMinutesOverride = 0;
     }
+    updateStatusHUD();
+}
+
+function updateStatusHUD() {
+    const mins = Math.floor(getEffectiveMedMinutes());
+    const stEl = document.getElementById('hud-status');
+    const parts = [];
+    if (isMed || mins > 0) parts.push(`Thiền ${mins}p`);
+    if (meritCount > 0) parts.push(`Phước ${meritCount}`);
+    if (hasFruitInHand) parts.push('Có trái');
+    stEl.textContent = parts.join(' · ');
 }
 
 function sendChat() {
@@ -1070,19 +1250,21 @@ function sendChat() {
         chatTicks = 300;
         pushChatLine(myName, v);
     }
-    inp.value = ''; inp.blur();
+    inp.value = '';
+    inp.blur();
 }
 function onChatKey(e) { if (e.key === 'Enter') sendChat(); }
-
-let peer = null, syncTimer = null, seq = 0;
-const conns = {}, remotes = {}, profiles = {}, seen = new Set();
 
 function enterGame() {
     myName = (document.getElementById('name-input').value || '').trim() || 'Hành Giả';
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('chat-panel').style.display = 'flex';
+    document.getElementById('chat-dock').style.display = 'flex';
     startP2P();
 }
+
+// --- MẠNG P2P ---
+let peer = null, syncTimer = null, seq = 0;
+const conns = {}, remotes = {}, profiles = {}, seen = new Set();
 
 function makePeer(id) {
     const p = id ? new Peer(id) : new Peer();
@@ -1113,7 +1295,7 @@ function bindConn(conn) {
     conns[conn.peer] = conn;
     conn.on('open', () => {
         if (conn.open) conn.send({ t: 'P', id: peer.id, n: myName, c: cfg });
-        const peers = Object.keys(conns).filter(x => x !== conn.peer).slice(0, 10);
+        const peers = Object.keys(conns).filter(x => x !== conn.peer).slice(0, 12);
         if (peers.length && conn.open) conn.send({ t: 'L', l: peers });
     });
     conn.on('data', d => {
@@ -1126,17 +1308,24 @@ function bindConn(conn) {
             if (d.mid) {
                 if (seen.has(d.mid)) return;
                 seen.add(d.mid);
-                if (seen.size > 1200) seen.delete(seen.values().next().value);
+                if (seen.size > 1500) seen.delete(seen.values().next().value);
             }
             const pr = profiles[d.id] || { n: 'Hành Giả', c: cfg };
             let rp = remotes[d.id];
             if (!rp) {
-                rp = remotes[d.id] = { id: d.id, name: pr.n, cfg: pr.c, x: d.x, y: d.y, tx: d.x, ty: d.y, med: !!(d.f & 1), walk: 0, chat: d.ch || '', ts: Date.now() };
+                rp = remotes[d.id] = {
+                    id: d.id, name: pr.n, cfg: pr.c,
+                    x: d.x, y: d.y, tx: d.x, ty: d.y,
+                    med: !!(d.f & 1), walk: 0, chat: d.ch || '',
+                    merit: d.mr || 0, medMins: d.mm || 0, ts: Date.now()
+                };
                 if (!profiles[d.id] && conn.open) conn.send({ t: 'QP', target: d.id });
             } else {
-                rp.tx = d.x; rp.ty = d.y; rp.med = !!(d.f & 1); rp.chat = d.ch || ''; rp.ts = Date.now();
+                rp.tx = d.x; rp.ty = d.y; rp.med = !!(d.f & 1);
+                rp.merit = d.mr || 0; rp.medMins = d.mm || 0;
+                if (d.ch && d.ch !== rp.chat) pushChatLine(rp.name, d.ch);
+                rp.chat = d.ch || ''; rp.ts = Date.now();
             }
-            if (d.ch) pushChatLine(rp.name, d.ch);
             if ((d.h || 0) < 3) {
                 for (const k in conns) if (k !== conn.peer && conns[k] && conns[k].open) conns[k].send(Object.assign({}, d, { h: (d.h || 0) + 1 }));
             }
@@ -1156,7 +1345,11 @@ function startSync() {
         if (!peer || peer.destroyed || !peer.id) return;
         if (peer.disconnected) { try { peer.reconnect(); } catch (_) {} }
         const flags = (isMed ? 1 : 0) | ((!isMed && walk > 0) ? 2 : 0);
-        const pkt = { t: 'M', mid: `${peer.id}_${++seq}`, id: peer.id, x: Math.round(myX), y: Math.round(myY), f: flags, ch: chatMsg, h: 0 };
+        const pkt = {
+            t: 'M', mid: `${peer.id}_${++seq}`, id: peer.id,
+            x: Math.round(myX), y: Math.round(myY), f: flags,
+            ch: chatMsg, mr: meritCount, mm: Math.floor(getEffectiveMedMinutes()), h: 0
+        };
         for (const k in conns) if (conns[k] && conns[k].open) conns[k].send(pkt);
 
         const now = Date.now();
@@ -1164,43 +1357,84 @@ function startSync() {
         for (const id in remotes) if (now - remotes[id].ts > 22000) { delete remotes[id]; remChanged = true; }
         if (remChanged) document.getElementById('hud-online').textContent = '● ' + (1 + Object.keys(remotes).length);
         if (peer.id !== ROOM_ID && (!conns[ROOM_ID] || !conns[ROOM_ID].open)) { delete conns[ROOM_ID]; connectTo(ROOM_ID); }
-    }, 250);
+    }, 240);
 }
 
-function stepSim(now) {
-    if (isMed) {
-        medElapsedMs = now - medStartMs;
-    } else {
-        let vx = 0, vy = 0; const spd = 3.5;
+// --- MÔ PHỎNG & VẼ ---
+function canWalkTo(nx, ny) {
+    if (nx < 28 || nx > MAP_W - 28 || ny < 185 || ny > MAP_H - 28) return false;
+    if (Math.hypot(nx - POND.x, ny - POND.y) < POND.r + 6) return false;
+    if (Math.hypot(nx - BODHI.x, ny - BODHI.y) < 26) return false;
+    return true;
+}
+
+function stepSim() {
+    if (!isMed) {
+        let vx = 0, vy = 0; const spd = 3.6;
         if (keys['w'] || keys['arrowup']) vy -= 1;
         if (keys['s'] || keys['arrowdown']) vy += 1;
         if (keys['a'] || keys['arrowleft']) vx -= 1;
         if (keys['d'] || keys['arrowright']) vx += 1;
         if (vx || vy) {
             const l = Math.hypot(vx, vy);
-            myX = Math.max(30, Math.min(MAP_W - 30, myX + (vx / l) * spd));
-            myY = Math.max(325, Math.min(MAP_H - 30, myY + (vy / l) * spd));
+            const sx = (vx / l) * spd, sy = (vy / l) * spd;
+            if (canWalkTo(myX + sx, myY)) myX += sx;
+            if (canWalkTo(myX, myY + sy)) myY += sy;
             tx = myX; ty = myY; walk += 0.25;
         } else {
             const dx = tx - myX, dy = ty - myY, d = Math.hypot(dx, dy);
-            if (d > spd) { myX += (dx / d) * spd; myY += (dy / d) * spd; walk += 0.25; }
-            else walk = 0;
+            if (d > spd) {
+                const sx = (dx / d) * spd, sy = (dy / d) * spd;
+                if (canWalkTo(myX + sx, myY)) myX += sx;
+                if (canWalkTo(myX, myY + sy)) myY += sy;
+                walk += 0.25;
+            } else {
+                walk = 0;
+            }
+        }
+        if (Math.abs(myX - GATE.x) < GATE.w * 0.45 && Math.abs(myY - GATE.y) < GATE.h * 0.45 && gateNoticeTicks <= 0) {
+            gateNoticeTicks = 120;
         }
     }
+
     for (const id in remotes) {
         const rp = remotes[id], dx = rp.tx - rp.x, dy = rp.ty - rp.y;
         if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) { rp.x += dx * 0.25; rp.y += dy * 0.25; rp.walk += 0.22; }
         else { rp.x = rp.tx; rp.y = rp.ty; rp.walk = 0; }
     }
+
     if (chatTicks > 0 && --chatTicks === 0) chatMsg = '';
+    if (gateNoticeTicks > 0) gateNoticeTicks--;
 }
 
-let lastIdleFrame = 0, fpsCnt = 0, fpsTick = performance.now();
+function drawPerson(ctx, e, t) {
+    const rx = Math.round(e.x), ry = Math.round(e.y);
+    const frames = getCharFrames(e.name, e.cfg, !!e.hasFruit, false);
+    const idx = e.med ? 3 : (e.walk > 0.01 ? (Math.sin(e.walk) >= 0 ? 1 : 2) : 0);
+    const headCy = e.med ? (ry - 78) : (ry - 86);
+    drawHeadHalo(ctx, rx, headCy, e.medMins || 0, t, e.merit || 0);
+    ctx.drawImage(frames[idx], rx - 72, ry - 118);
+
+    if (e.chat) {
+        ctx.font = '11px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        const w = Math.max(ctx.measureText(e.chat).width + 12, 32), by = ry - 134;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(Math.round(rx - w / 2), by, Math.round(w), 18);
+        ctx.fillStyle = '#fff59d';
+        ctx.fillText(e.chat, rx, by + 13);
+    }
+}
+
+let lastIdleFrame = 0, lastLoopTime = performance.now(), fpsCnt = 0, fpsTick = performance.now(), lastChatClean = 0;
 const list = [];
 
 function loop(now) {
     requestAnimationFrame(loop);
     if (document.hidden) return;
+
+    const dt = Math.min(100, now - lastLoopTime);
+    lastLoopTime = now;
 
     const isMoving = !isMed && (walk > 0 || keys['w'] || keys['a'] || keys['s'] || keys['d'] || keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'] || Math.hypot(tx - myX, ty - myY) > 3.5);
     if (!isMoving && (now - lastIdleFrame < IDLE_FRAME_MS)) return;
@@ -1210,15 +1444,20 @@ function loop(now) {
     if (now - fpsTick >= 1000) {
         document.getElementById('hud-fps').textContent = fpsCnt + ' FPS';
         fpsCnt = 0; fpsTick = now;
+        updateStatusHUD();
+    }
+    if (now - lastChatClean >= 5000) {
+        lastChatClean = now;
+        renderChatLog();
     }
 
-    const d = new Date(Date.now() + 7 * 3600000);
-    const h = d.getUTCHours(), m = d.getUTCMinutes();
-    document.getElementById('hud-clock').textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-    const night = (h >= 18 || h < 6);
+    const clk = getVNClock();
+    const night = isNightTime(clk.hours);
+    document.getElementById('hud-clock').textContent = clk.label;
 
-    updateMonkSchedule(h);
-    stepSim(now);
+    stepSim();
+    stepAlmsEvent(dt, now);
+    stepParticles(dt, now);
     buildMap(night);
 
     const camX = Math.floor(canvas.width / 2 - myX);
@@ -1231,14 +1470,26 @@ function loop(now) {
     const sw = Math.min(MAP_W, right) - sx, sh = Math.min(MAP_H, bottom) - sy;
     if (sw > 0 && sh > 0) ctx.drawImage(staticCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
 
-    drawDynamicWorld(ctx, now);
-    updateAndDrawMonkAndCelestials(ctx, now);
+    // Mây sương trôi bồng bềnh quanh núi trên mép map
+    const cloudOffset = Math.round(Math.sin(now * 0.00025) * 42);
+    ctx.fillStyle = night ? 'rgba(180, 220, 240, 0.16)' : 'rgba(255, 255, 255, 0.45)';
+    ctx.fillRect(Math.max(0, left), 124, Math.min(MAP_W, right) - Math.max(0, left), 10);
+    ctx.fillRect(Math.max(0, left), 148, Math.min(MAP_W, right) - Math.max(0, left), 10);
+    ctx.fillStyle = night ? 'rgba(220, 240, 255, 0.2)' : 'rgba(255, 255, 255, 0.6)';
+    for (let cx = 80; cx < MAP_W; cx += 280) {
+        ctx.fillRect(cx + cloudOffset, 108, 48, 8);
+    }
+
+    drawPondKoi(ctx, now);
+    drawAlmsWorld(ctx, now);
 
     list.length = 0;
     list.push({
         x: myX, y: myY, name: myName, cfg,
-        med: isMed, medElapsedMs, holdingFruit: myHoldingFruit, offerings: myOfferings,
-        walk, chat: chatMsg
+        med: isMed, walk, chat: chatMsg,
+        medMins: getEffectiveMedMinutes(),
+        merit: meritCount,
+        hasFruit: hasFruitInHand
     });
     for (const id in remotes) {
         const rp = remotes[id];
@@ -1249,11 +1500,22 @@ function loop(now) {
     }
     list.sort((a, b) => a.y - b.y);
     for (let i = 0; i < list.length; i++) drawPerson(ctx, list[i], now);
+
+    drawParticles(ctx, now);
+
+    if (gateNoticeTicks > 0) {
+        ctx.font = 'bold 11px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(GATE.x - 95, GATE.y - 68, 190, 20);
+        ctx.fillStyle = '#ffe082';
+        ctx.fillText('Cổng Tam Quan - Đang chờ mở', GATE.x, GATE.y - 54);
+    }
+
     ctx.restore();
 }
 
 initCreator();
-updateStatusHud();
 requestAnimationFrame(loop);
 </script>
 </body>
