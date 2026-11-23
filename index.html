@@ -50,7 +50,6 @@
         .icon-btn.active { background: #2e7d32; border-color: #a5d6a7; color: #fff; }
         .icon-btn.muted { opacity: 0.6; color: #bbb; border-color: rgba(255,255,255,0.2); }
 
-        /* Ngăn kéo Tu Tập: Vipassana, Ba La Mật, Quest & Thiền Viện Myanmar */
         #dharma-drawer {
             position: absolute; top: 46px; left: 8px; right: 8px; z-index: 26;
             max-height: 58%; display: none; flex-direction: column; gap: 6px;
@@ -72,7 +71,6 @@
         .card-title { color: #ffe082; font-weight: bold; margin-bottom: 3px; }
         .ref-link { color: #81c784; text-decoration: underline; font-size: 10px; }
 
-        /* Bảng Test nhanh */
         #test-panel {
             position: absolute; top: 46px; right: 8px; z-index: 27;
             width: 204px; display: none; flex-direction: column; gap: 4px;
@@ -87,7 +85,6 @@
         }
         .t-btn.active { background: #d4af37; color: #111; font-weight: bold; }
 
-        /* Khung Chat UI: nền đen mờ trong suốt 40%, cuộn cảm ứng mượt */
         #chat-dock {
             position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 20;
             display: none; flex-direction: column; gap: 5px;
@@ -161,7 +158,7 @@
             <div id="hud-zone" style="color:#ffe082;">Mahasi · Chánh Niệm</div>
             <div id="hud-online" style="color:#81c784;">● 1</div>
             <div id="hud-fps" style="color:#90caf9;">60 FPS</div>
-            <div id="hud-rank" style="color:#ffcc80;">Cảnh giới: Sơ Hành Giả</div>
+            <div id="hud-rank" style="color:#ffcc80;">Sơ Hành Giả · XP 0</div>
         </div>
 
         <div id="icon-bar-top">
@@ -283,8 +280,8 @@ const MAP_W = 1400;
 const MAP_H = 1190;
 const BODHI = { x: 700, y: 315, r: 96 };
 const GATE = { x: 700, y: 635, w: 92, h: 64 };
-const POND = { x: 1030, y: 740, r: 118 };
-const ROOM_ID = 'thienvien_v81_room';
+const POND = { x: 1030, y: 740, r: 116 };
+const ROOM_ID = 'thienvien_v10_room';
 const MAX_CONNS = 24;
 const MAX_RENDER = 100;
 const IDLE_FRAME_MS = 1000 / 30;
@@ -347,7 +344,7 @@ PARAMIS.forEach(p => { progress.paramiPoints[p.key] = 0; });
 
 function loadProgress() {
     try {
-        const raw = JSON.parse(localStorage.getItem('rotmgthien_v81_prog') || 'null');
+        const raw = JSON.parse(localStorage.getItem('rotmgthien_v10_prog') || 'null');
         if (raw) {
             progress = Object.assign(progress, raw);
             progress.paramiPoints = Object.assign(
@@ -358,7 +355,7 @@ function loadProgress() {
     } catch (_) {}
 }
 function saveProgress() {
-    try { localStorage.setItem('rotmgthien_v81_prog', JSON.stringify(progress)); } catch (_) {}
+    try { localStorage.setItem('rotmgthien_v10_prog', JSON.stringify(progress)); } catch (_) {}
 }
 function addParami(key, amount = 1) {
     progress.paramiPoints[key] = (progress.paramiPoints[key] || 0) + amount;
@@ -391,8 +388,8 @@ function getQuests() {
 }
 
 // --- TRẠNG THÁI TEST NHANH ---
-let testTimeMode = null; // null | 'day' | 'night'
-let testMedMinutesOverride = null; // null | number
+let testTimeMode = null;
+let testMedMinutesOverride = null;
 let testForceAlms = false;
 
 // --- TOOLTIP & NGĂN KÉO PHÁP HỌC ---
@@ -430,6 +427,7 @@ function markLessonRead(idx) {
     if (!progress.lessonsRead.includes(idx)) {
         progress.lessonsRead.push(idx);
         addParami('panna', 2);
+        playSfx('chime');
     }
     renderDharmaContent();
 }
@@ -441,6 +439,7 @@ function switchZone(zId) {
         addParami('adhitthana', 2);
     }
     document.getElementById('hud-zone').textContent = ZONES[currentZoneId].name;
+    playSfx('gate');
     renderDharmaContent();
 }
 function renderDharmaContent() {
@@ -492,6 +491,7 @@ function addTestOffering() {
     progress.meritCount++;
     addParami('dana', 2);
     spawnCelestialBurst(myX, myY - 30);
+    playSfx('offering');
     updateStatusHUD();
 }
 function resetTestOverride() {
@@ -510,20 +510,52 @@ function triggerTestAlms() {
     spawnAlmsMonkIfNeeded(true);
 }
 
-// --- NHẠC NGŨ CUNG NHẸ ---
+// --- ÂM THANH 8-BIT WEB AUDIO API (0 KB FILE NGOÀI) ---
 let audioCtx = null, isMusicOn = false, musicTimer = null;
 const NOTES = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+
+function ensureAudio() {
+    if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+}
+
+function playSfx(kind) {
+    if (!isMusicOn) return;
+    ensureAudio();
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    if (kind === 'pick') {
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.06);
+    } else if (kind === 'offering') {
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(587.33, now + 0.08);
+        osc.frequency.setValueAtTime(880, now + 0.16);
+    } else if (kind === 'gate') {
+        osc.frequency.setValueAtTime(329.63, now);
+        osc.frequency.setValueAtTime(493.88, now + 0.09);
+    } else {
+        osc.frequency.setValueAtTime(587.33, now);
+    }
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(now); osc.stop(now + 0.3);
+}
+
 function toggleMusic() {
     const btn = document.getElementById('btn-music');
     isMusicOn = !isMusicOn;
     btn.classList.toggle('active', isMusicOn);
     btn.classList.toggle('muted', !isMusicOn);
     if (isMusicOn) {
-        if (!audioCtx) {
-            const AC = window.AudioContext || window.webkitAudioContext;
-            if (AC) audioCtx = new AC();
-        }
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        ensureAudio();
         if (!musicTimer) {
             let i = 0;
             musicTimer = setInterval(() => {
@@ -543,9 +575,7 @@ function toggleMusic() {
     }
 }
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && isMusicOn && audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-    }
+    if (!document.hidden && isMusicOn) ensureAudio();
 });
 
 // --- GIỜ VIỆT NAM (Asia/Ho_Chi_Minh, UTC+7) ---
@@ -567,7 +597,51 @@ function isAlmsWindow(hours) {
     return (hours >= 6 && hours < 11);
 }
 
-// --- PIXEL ART SPRITE NHÂN VẬT & SƯ ---
+// --- HÀM VẼ HÌNH KHỐI PIXEL ART THUẦN (KHÔNG BLUR / KHÔNG ARC TRƠN) ---
+function fillPixelDisc(ctx, cx, cy, r, step = 4) {
+    const r2 = r * r;
+    const minY = Math.floor(-r / step) * step;
+    const maxY = Math.ceil(r / step) * step;
+    for (let dy = minY; dy <= maxY; dy += step) {
+        const rem = r2 - dy * dy;
+        if (rem < 0) continue;
+        const hw = Math.floor(Math.sqrt(rem) / step) * step;
+        if (hw > 0) ctx.fillRect(Math.round(cx - hw), Math.round(cy + dy), hw * 2, step);
+    }
+}
+
+function strokePixelRing(ctx, cx, cy, r, thickness = 4, step = 4) {
+    const rOut2 = r * r;
+    const rIn = Math.max(0, r - thickness);
+    const rIn2 = rIn * rIn;
+    const minY = Math.floor(-r / step) * step;
+    const maxY = Math.ceil(r / step) * step;
+    for (let dy = minY; dy <= maxY; dy += step) {
+        const dy2 = dy * dy;
+        const remOut = rOut2 - dy2;
+        if (remOut < 0) continue;
+        const hwOut = Math.floor(Math.sqrt(remOut) / step) * step;
+        const remIn = rIn2 - dy2;
+        const hwIn = remIn > 0 ? Math.floor(Math.sqrt(remIn) / step) * step : 0;
+        if (hwOut > hwIn) {
+            ctx.fillRect(Math.round(cx - hwOut), Math.round(cy + dy), hwOut - hwIn, step);
+            ctx.fillRect(Math.round(cx + hwIn), Math.round(cy + dy), hwOut - hwIn, step);
+        }
+    }
+}
+
+function fillPixelEllipse(ctx, cx, cy, rx, ry, step = 4) {
+    const minY = Math.floor(-ry / step) * step;
+    const maxY = Math.ceil(ry / step) * step;
+    for (let dy = minY; dy <= maxY; dy += step) {
+        const norm = 1 - (dy * dy) / (ry * ry);
+        if (norm < 0) continue;
+        const hw = Math.floor((rx * Math.sqrt(norm)) / step) * step;
+        if (hw > 0) ctx.fillRect(Math.round(cx - hw), Math.round(cy + dy), hw * 2, step);
+    }
+}
+
+// --- PIXEL ART SPRITE NHÂN VẬT & VỊ SƯ ---
 function createDetailedPortraitCanvas(c, isMed, stepFrame, hasFruit = false, isMonk = false) {
     const W = 42, H = 56, S = 2;
     const cv = document.createElement('canvas');
@@ -751,9 +825,7 @@ function getCharFrames(name, c, hasFruit = false, isMonk = false) {
         cx.imageSmoothingEnabled = false;
 
         cx.fillStyle = 'rgba(0,0,0,0.38)';
-        cx.beginPath();
-        cx.ellipse(72, 118, p.med ? 26 : 16, 5, 0, 0, Math.PI * 2);
-        cx.fill();
+        fillPixelEllipse(cx, 72, 118, p.med ? 26 : 16, 6, 2);
 
         const bob = (idx === 1 || idx === 2) ? -2 : 0;
         const topY = Math.round(118 - spr.height + bob);
@@ -811,7 +883,7 @@ function setGender(g, btn) {
     renderPreview();
 }
 
-// --- 3. BẢN ĐỒ TĨNH (OFFSCREEN CANVAS): BỒ ĐỀ, NẤM KHỔNG LỒ, BỤI CỎ, HOA, BỂ CÁ + ĐÁ CUỘI, TAM QUAN ---
+// --- 3. BẢN ĐỒ TĨNH PIXEL ART THUẦN (OFFSCREEN CANVAS) ---
 const MUSHROOMS = [
     { x: 170, y: 390, cap: '#e53935', spot: '#fffde7' },
     { x: 1230, y: 410, cap: '#8e24aa', spot: '#f3e5f5' },
@@ -823,17 +895,17 @@ const GRASS_CLUMPS = [
     { x: 860, y: 510 }, { x: 960, y: 950 }, { x: 560, y: 920 }
 ];
 const PIXEL_FLOWERS = [];
-for (let i = 0; i < 48; i++) {
+for (let i = 0; i < 52; i++) {
     const fx = 65 + ((i * 257) % (MAP_W - 130));
     const fy = 215 + ((i * 397) % (MAP_H - 255));
-    if (Math.hypot(fx - POND.x, fy - POND.y) > POND.r + 22) {
+    if (Math.hypot(fx - POND.x, fy - POND.y) > POND.r + 24) {
         PIXEL_FLOWERS.push({ x: fx, y: fy, c: (i % 3 === 0) ? '#f48fb1' : ((i % 3 === 1) ? '#ffeb3b' : '#90caf9') });
     }
 }
 const BOULDERS = [
-    { x: POND.x - 105, y: POND.y + 42, rx: 22, ry: 13 },
-    { x: POND.x + 92, y: POND.y + 56, rx: 26, ry: 15 },
-    { x: POND.x - 24, y: POND.y + 118, rx: 19, ry: 11 }
+    { x: POND.x - 104, y: POND.y + 42, rx: 22, ry: 14 },
+    { x: POND.x + 92, y: POND.y + 56, rx: 26, ry: 16 },
+    { x: POND.x - 24, y: POND.y + 116, rx: 20, ry: 12 }
 ];
 const KOI_LIST = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#651fff'].map((col, idx) => ({
     col, ang: idx * 1.0, rad: 30 + idx * 11, spd: 0.00018 + (idx % 3) * 0.00005
@@ -860,7 +932,7 @@ function drawPixelFlower(s, x, y, petalCol) {
 
 function drawGiantMushroom(s, m) {
     s.fillStyle = 'rgba(0,0,0,0.34)';
-    s.beginPath(); s.ellipse(m.x, m.y + 4, 26, 7, 0, 0, Math.PI * 2); s.fill();
+    fillPixelEllipse(s, m.x, m.y + 4, 26, 8, 2);
 
     s.fillStyle = '#141518';
     s.fillRect(m.x - 11, m.y - 44, 22, 46);
@@ -868,44 +940,53 @@ function drawGiantMushroom(s, m) {
     s.fillRect(m.x - 9, m.y - 42, 18, 42);
 
     s.fillStyle = '#141518';
-    s.beginPath(); s.arc(m.x, m.y - 48, 34, Math.PI, 0); s.lineTo(m.x + 34, m.y - 42); s.lineTo(m.x - 34, m.y - 42); s.closePath(); s.fill();
+    fillPixelEllipse(s, m.x, m.y - 46, 36, 22, 4);
+    s.fillRect(m.x - 36, m.y - 46, 72, 6);
 
     s.fillStyle = m.cap;
-    s.beginPath(); s.arc(m.x, m.y - 48, 31, Math.PI, 0); s.lineTo(m.x + 31, m.y - 44); s.lineTo(m.x - 31, m.y - 44); s.closePath(); s.fill();
+    fillPixelEllipse(s, m.x, m.y - 48, 32, 19, 4);
+    s.fillRect(m.x - 32, m.y - 48, 64, 5);
 
     s.fillStyle = m.spot;
-    s.fillRect(m.x - 18, m.y - 62, 7, 6);
-    s.fillRect(m.x - 3, m.y - 71, 8, 7);
-    s.fillRect(m.x + 12, m.y - 60, 7, 6);
+    s.fillRect(m.x - 18, m.y - 60, 7, 6);
+    s.fillRect(m.x - 3, m.y - 66, 8, 6);
+    s.fillRect(m.x + 12, m.y - 58, 7, 6);
 }
 
 function drawBodhiTree(s, night, zone) {
-    const aura = s.createRadialGradient(BODHI.x, BODHI.y - 35, 16, BODHI.x, BODHI.y - 25, 155);
-    aura.addColorStop(0, night ? 'rgba(255, 224, 130, 0.26)' : 'rgba(255, 245, 157, 0.34)');
-    aura.addColorStop(1, 'rgba(255, 224, 130, 0)');
-    s.fillStyle = aura;
-    s.beginPath(); s.arc(BODHI.x, BODHI.y - 25, 155, 0, Math.PI * 2); s.fill();
+    s.fillStyle = night ? 'rgba(255, 224, 130, 0.08)' : 'rgba(255, 245, 157, 0.14)';
+    fillPixelDisc(s, BODHI.x, BODHI.y - 40, 156, 8);
+    s.fillStyle = night ? 'rgba(255, 224, 130, 0.14)' : 'rgba(255, 245, 157, 0.22)';
+    fillPixelDisc(s, BODHI.x, BODHI.y - 40, 118, 8);
 
     s.fillStyle = 'rgba(0,0,0,0.38)';
-    s.beginPath(); s.ellipse(BODHI.x, BODHI.y + 8, 62, 14, 0, 0, Math.PI * 2); s.fill();
+    fillPixelEllipse(s, BODHI.x, BODHI.y + 8, 64, 14, 4);
 
     s.fillStyle = '#141518';
-    s.fillRect(BODHI.x - 20, BODHI.y - 62, 40, 70);
+    s.fillRect(BODHI.x - 22, BODHI.y - 64, 44, 72);
+    s.fillRect(BODHI.x - 30, BODHI.y - 8, 60, 16);
     s.fillStyle = '#5d4037';
-    s.fillRect(BODHI.x - 17, BODHI.y - 59, 34, 64);
+    s.fillRect(BODHI.x - 18, BODHI.y - 60, 36, 66);
+    s.fillRect(BODHI.x - 26, BODHI.y - 4, 52, 10);
 
     s.fillStyle = '#141518';
-    s.beginPath(); s.arc(BODHI.x, BODHI.y - 84, 78, 0, Math.PI * 2); s.fill();
+    fillPixelDisc(s, BODHI.x, BODHI.y - 88, 84, 4);
+    fillPixelDisc(s, BODHI.x - 44, BODHI.y - 76, 52, 4);
+    fillPixelDisc(s, BODHI.x + 44, BODHI.y - 76, 52, 4);
+
     s.fillStyle = night ? '#1f4e2b' : '#2e7d32';
-    s.beginPath(); s.arc(BODHI.x, BODHI.y - 84, 74, 0, Math.PI * 2); s.fill();
+    fillPixelDisc(s, BODHI.x, BODHI.y - 88, 78, 4);
+    fillPixelDisc(s, BODHI.x - 44, BODHI.y - 76, 46, 4);
+    fillPixelDisc(s, BODHI.x + 44, BODHI.y - 76, 46, 4);
+
     s.fillStyle = zone.bodhiTint;
-    s.beginPath(); s.arc(BODHI.x - 22, BODHI.y - 96, 36, 0, Math.PI * 2); s.fill();
-    s.beginPath(); s.arc(BODHI.x + 24, BODHI.y - 90, 32, 0, Math.PI * 2); s.fill();
+    fillPixelDisc(s, BODHI.x - 24, BODHI.y - 102, 36, 4);
+    fillPixelDisc(s, BODHI.x + 26, BODHI.y - 96, 32, 4);
 }
 
 function drawTamQuanGate(s, night) {
     const gx = GATE.x, gy = GATE.y;
-    s.fillStyle = 'rgba(255, 213, 79, 0.18)';
+    s.fillStyle = 'rgba(255, 213, 79, 0.2)';
     s.fillRect(gx - 56, gy - 46, 112, 64);
 
     s.fillStyle = '#141518';
@@ -947,13 +1028,13 @@ function buildMap(night) {
 
     if (!night) {
         s.fillStyle = '#fff176';
-        s.beginPath(); s.arc(1180, 48, 22, 0, Math.PI * 2); s.fill();
+        fillPixelDisc(s, 1180, 48, 22, 4);
     } else {
         s.fillStyle = '#fff9c4';
-        s.beginPath(); s.arc(1160, 46, 16, 0, Math.PI * 2); s.fill();
+        fillPixelDisc(s, 1160, 46, 16, 4);
         s.fillStyle = '#ffffff';
         for (let i = 0; i < 24; i++) {
-            s.fillRect((i * 59) % MAP_W, 14 + ((i * 23) % 70), 2, 2);
+            s.fillRect((i * 59) % MAP_W, 14 + ((i * 23) % 70), 3, 3);
         }
     }
 
@@ -976,16 +1057,18 @@ function buildMap(night) {
     s.fillStyle = night ? '#4a3a2c' : '#b88b5a';
     s.fillRect(674, 345, 52, 315);
 
+    s.fillStyle = '#141518';
+    fillPixelDisc(s, POND.x, POND.y, POND.r + 12, 4);
     s.fillStyle = night ? '#2a352c' : '#6f7d63';
-    s.beginPath(); s.arc(POND.x, POND.y, POND.r + 8, 0, Math.PI * 2); s.fill();
+    fillPixelDisc(s, POND.x, POND.y, POND.r + 8, 4);
     s.fillStyle = night ? '#123c54' : '#3a7bb8';
-    s.beginPath(); s.arc(POND.x, POND.y, POND.r, 0, Math.PI * 2); s.fill();
+    fillPixelDisc(s, POND.x, POND.y, POND.r, 4);
 
     BOULDERS.forEach(b => {
         s.fillStyle = '#141518';
-        s.beginPath(); s.ellipse(b.x, b.y, b.rx + 2, b.ry + 2, 0, 0, Math.PI * 2); s.fill();
+        fillPixelEllipse(s, b.x, b.y, b.rx + 2, b.ry + 2, 2);
         s.fillStyle = night ? '#546e7a' : '#90a4ae';
-        s.beginPath(); s.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2); s.fill();
+        fillPixelEllipse(s, b.x, b.y, b.rx, b.ry, 2);
     });
 
     GRASS_CLUMPS.forEach(g => {
@@ -1100,7 +1183,7 @@ function drawParticles(ctx, time) {
     }
 }
 
-// --- 5. HÀO QUANG NGỒI THIỀN THEO MỐC PHÚT (LẤY ĐẦU LÀM TÂM) ---
+// --- 5. HÀO QUANG NGỒI THIỀN PIXEL ART THEO MỐC PHÚT (LẤY ĐẦU LÀM TÂM) ---
 function getEffectiveMedMinutes() {
     if (testMedMinutesOverride !== null) return testMedMinutesOverride;
     if (!isMed || !medStartAt) return 0;
@@ -1112,73 +1195,74 @@ function drawHeadHalo(ctx, headCx, headCy, mins, time, meritBoost) {
 
     const pulse = 0.94 + Math.sin(time * 0.004) * 0.06;
     const boostR = meritBoost * 3.5;
-    let baseR = (24 + Math.min(34, mins * 0.45) + boostR) * pulse;
+    const baseR = Math.round((24 + Math.min(34, mins * 0.45) + boostR) * pulse);
+    const cx = Math.round(headCx);
+    const cy = Math.round(headCy);
 
     ctx.save();
-    ctx.translate(Math.round(headCx), Math.round(headCy));
 
     if (mins > 60) {
         const colors7 = ['#ff1744', '#ff9100', '#ffea00', '#00e676', '#00b0ff', '#3d5afe', '#d500f9'];
         colors7.forEach((col, idx) => {
-            ctx.strokeStyle = col;
-            ctx.globalAlpha = Math.max(0.18, 0.72 - idx * 0.08);
-            ctx.lineWidth = 2.2;
-            ctx.beginPath(); ctx.arc(0, 0, baseR + idx * 4.5, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = col;
+            ctx.globalAlpha = Math.max(0.22, 0.72 - idx * 0.08);
+            strokePixelRing(ctx, cx, cy, baseR + idx * 4, 4, 4);
         });
-        ctx.globalAlpha = 0.92;
+        ctx.globalAlpha = 0.95;
+        // Hoa lá mọc quanh chỗ ngồi đung đưa theo gió
         for (let i = 0; i < 6; i++) {
             const a = (i / 6) * Math.PI * 2 + time * 0.0005;
-            const sway = Math.sin(time * 0.003 + i) * 3;
-            const fx = Math.round(Math.cos(a) * (baseR + 12) + sway);
-            const fy = Math.round(Math.sin(a) * (baseR * 0.65) + 26);
+            const sway = Math.round(Math.sin(time * 0.003 + i) * 3);
+            const fx = Math.round(cx + Math.cos(a) * (baseR + 14) + sway);
+            const fy = Math.round(cy + Math.sin(a) * (baseR * 0.65) + 28);
             ctx.fillStyle = '#66bb6a'; ctx.fillRect(fx - 2, fy + 2, 4, 5);
             ctx.fillStyle = '#f48fb1'; ctx.fillRect(fx - 3, fy - 2, 6, 4);
         }
+        // Chim nhỏ đậu & mổ hạt quanh chân hành giả + bướm bay vòng quanh
         for (let b = 0; b < 4; b++) {
-            const ang = time * 0.0016 + b * 1.57;
-            const bx = Math.round(Math.cos(ang) * (baseR + 18));
-            const by = Math.round(Math.sin(ang) * (baseR * 0.85));
-            ctx.fillStyle = b < 2 ? '#fff59d' : '#ffffff';
-            ctx.fillRect(bx - 3, by - 2, 6, 3);
+            if (b < 2) {
+                const peck = Math.sin(time * 0.01 + b * 2) > 0.4 ? 2 : 0;
+                const birdX = cx + (b === 0 ? -36 : 36);
+                const birdY = cy + 36 + peck;
+                ctx.fillStyle = '#8d6e63'; ctx.fillRect(birdX - 4, birdY - 3, 8, 5);
+                ctx.fillStyle = '#ffca28'; ctx.fillRect(birdX + (b === 0 ? 4 : -6), birdY - 2, 3, 2);
+                ctx.fillStyle = '#fff59d'; ctx.fillRect(birdX + (b === 0 ? 8 : -9), birdY + 2, 2, 2);
+            } else {
+                const ang = time * 0.0018 + b * 2.1;
+                const bx = Math.round(cx + Math.cos(ang) * (baseR + 18));
+                const by = Math.round(cy + Math.sin(ang) * (baseR * 0.85));
+                const flap = Math.sin(time * 0.02 + b) > 0 ? 3 : 1;
+                ctx.fillStyle = '#fff59d';
+                ctx.fillRect(bx - flap, by - 2, flap, 4);
+                ctx.fillRect(bx + 1, by - 2, flap, 4);
+            }
         }
     } else if (mins >= 60) {
         const colors5 = ['#ff5252', '#ffab40', '#ffff00', '#69f0ae', '#40c4ff'];
         colors5.forEach((col, idx) => {
-            ctx.strokeStyle = col;
-            ctx.globalAlpha = Math.max(0.12, 0.65 - idx * 0.12);
-            ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.arc(0, 0, baseR + idx * 4, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = col;
+            ctx.globalAlpha = Math.max(0.14, 0.65 - idx * 0.12);
+            strokePixelRing(ctx, cx, cy, baseR + idx * 4, 4, 4);
         });
     } else if (mins >= 50) {
-        ctx.strokeStyle = '#ffd54f'; ctx.globalAlpha = 0.65; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = '#29b6f6'; ctx.globalAlpha = 0.55; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(0, 0, baseR + 7, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#ffd54f'; ctx.globalAlpha = 0.55;
+        fillPixelDisc(ctx, cx, cy, baseR, 4);
+        ctx.fillStyle = '#29b6f6'; ctx.globalAlpha = 0.62;
+        strokePixelRing(ctx, cx, cy, baseR + 6, 4, 4);
     } else if (mins >= 30) {
-        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, baseR + 10);
-        g.addColorStop(0, 'rgba(255, 241, 118, 0.65)');
-        g.addColorStop(0.65, 'rgba(255, 167, 38, 0.35)');
-        g.addColorStop(1, 'rgba(255, 112, 67, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(0, 0, baseR + 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255, 167, 38, 0.34)';
+        fillPixelDisc(ctx, cx, cy, baseR + 8, 4);
+        ctx.fillStyle = 'rgba(255, 241, 118, 0.52)';
+        fillPixelDisc(ctx, cx, cy, Math.round(baseR * 0.65), 4);
     } else if (mins >= 20) {
-        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, baseR + 6);
-        g.addColorStop(0, 'rgba(238, 255, 65, 0.58)');
-        g.addColorStop(1, 'rgba(255, 238, 88, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(0, 0, baseR + 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(238, 255, 65, 0.45)';
+        fillPixelDisc(ctx, cx, cy, baseR + 4, 4);
     } else if (mins >= 10) {
-        const g = ctx.createRadialGradient(0, 0, 3, 0, 0, baseR);
-        g.addColorStop(0, 'rgba(255, 245, 157, 0.45)');
-        g.addColorStop(1, 'rgba(255, 235, 59, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(0, 0, baseR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255, 245, 157, 0.42)';
+        fillPixelDisc(ctx, cx, cy, baseR, 4);
     } else {
-        const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 22 + boostR);
-        g.addColorStop(0, 'rgba(255, 245, 157, 0.42)');
-        g.addColorStop(1, 'rgba(255, 213, 79, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(0, 0, 22 + boostR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255, 245, 157, 0.38)';
+        fillPixelDisc(ctx, cx, cy, 20 + Math.round(boostR), 4);
     }
 
     ctx.restore();
@@ -1251,6 +1335,7 @@ function stepAlmsEvent(dt, time) {
             if (fs.ripe && Math.hypot(myX - fs.x, myY - fs.y) < 38) {
                 fs.ripe = false;
                 hasFruitInHand = true;
+                playSfx('pick');
                 pushChatLine(myName, 'Đã hái trái dâng Sư');
                 break;
             }
@@ -1262,6 +1347,7 @@ function stepAlmsEvent(dt, time) {
         progress.meritCount++;
         addParami('dana', 2);
         spawnCelestialBurst(monk.x, monk.y - 45);
+        playSfx('offering');
         pushChatLine(myName, `Cúng dường thành tâm (Phước: ${progress.meritCount})`);
         updateStatusHUD();
     }
@@ -1296,7 +1382,7 @@ function drawAlmsWorld(ctx, time) {
             const gx = Math.round(monk.x + Math.cos(ang) * 34);
             const gy = Math.round(monk.y - 56 + Math.sin(ang * 1.3) * 18);
             ctx.fillStyle = 'rgba(255, 245, 157, 0.35)';
-            ctx.beginPath(); ctx.arc(gx, gy, 8, 0, Math.PI * 2); ctx.fill();
+            fillPixelDisc(ctx, gx, gy, 8, 2);
             ctx.fillStyle = '#fff9c4';
             ctx.fillRect(gx - 2, gy - 2, 4, 4);
         });
